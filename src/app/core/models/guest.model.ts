@@ -115,6 +115,7 @@ export interface CreateAgreementRequest {
   processedByName: string;
   processedBySignature: string;
   remarks?: string;
+  pdfPath?: string;
 }
 
 export type StatisticsPeriod = 'today' | 'week' | 'month' | 'year';

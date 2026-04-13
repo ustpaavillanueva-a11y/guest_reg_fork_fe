@@ -12,8 +12,7 @@ import { AuthService } from '../../core/services/auth.service';
   template: `
     <mat-toolbar class="toolbar">
       <div class="toolbar-left">
-        <mat-icon class="logo-icon">hotel</mat-icon>
-        <span class="hotel-name">Kekehyu Hotel</span>
+       <img src="./header.png" alt="Header Image">
       </div>
 
       <nav class="toolbar-nav">

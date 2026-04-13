@@ -582,6 +582,11 @@ export class RegistrationPdfComponent implements OnInit {
       next: (guest) => {
         this.guest.set(guest);
         this.loading.set(false);
+        
+        // Auto-save PDF to database if not already saved
+        if (!guest.agreement.pdfPath) {
+          this.generateAndSavePdf(guest);
+        }
       },
       error: () => {
         this.loading.set(false);
@@ -591,6 +596,48 @@ export class RegistrationPdfComponent implements OnInit {
 
   printPdf(): void {
     window.print();
+  }
+
+  private generateAndSavePdf(guest: Guest): void {
+    // Give browser time to render the PDF content
+    setTimeout(() => {
+      const pdfContent = document.getElementById('pdfContent');
+      if (!pdfContent) return;
+
+      const clonedContent = pdfContent.cloneNode(true) as HTMLElement;
+      
+      // Remove no-print elements
+      clonedContent.querySelectorAll('.no-print, .action-bar').forEach(el => {
+        (el as HTMLElement).remove();
+      });
+
+      // Generate PDF and get as data URL
+      const options: any = {
+        margin: [5, 5, 5, 5],
+        image: { type: 'jpeg' as const, quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' }
+      };
+
+      html2pdf().set(options).from(clonedContent).output('dataurlstring').then((pdfData: string) => {
+        // Save the PDF data URL to the database
+        this.guestService.update(guest.id, {
+          agreement: {
+            ...guest.agreement,
+            pdfPath: pdfData
+          }
+        }).subscribe({
+          next: (updatedGuest) => {
+            // Update the guest signal with saved PDF
+            this.guest.set(updatedGuest);
+          },
+          error: () => {
+            // Silently fail - PDF generation is not critical to user flow
+            console.warn('Failed to save PDF to database');
+          }
+        });
+      });
+    }, 500); // Give template time to render
   }
 
   downloadAllPdf(): void {

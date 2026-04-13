@@ -14,6 +14,7 @@ import { FormsModule } from '@angular/forms';
 import { GuestService } from '../../../core/services/guest.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { Guest } from '../../../core/models';
+import { GuestPdfPreviewComponent } from './guest-pdf-preview.component';
 
 @Component({
   selector: 'app-guest-list',
@@ -115,7 +116,8 @@ export class GuestListComponent implements OnInit {
   constructor(
     private guestService: GuestService,
     private authService: AuthService,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private dialog: MatDialog
   ) {}
 
   ngOnInit(): void {
@@ -148,7 +150,11 @@ export class GuestListComponent implements OnInit {
   }
 
   viewGuest(guest: Guest): void {
-    // TODO: open detail dialog
+    this.dialog.open(GuestPdfPreviewComponent, {
+      width: '900px',
+      maxHeight: '90vh',
+      data: guest
+    });
   }
 
   deleteGuest(guest: Guest): void {

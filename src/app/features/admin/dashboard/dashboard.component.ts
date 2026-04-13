@@ -3,13 +3,16 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTableModule } from '@angular/material/table';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatButtonModule } from '@angular/material/button';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { DatePipe } from '@angular/common';
 import { GuestService } from '../../../core/services/guest.service';
 import { GuestStatistics, Guest } from '../../../core/models';
+import { GuestPdfPreviewComponent } from '../guest-list/guest-pdf-preview.component';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [MatCardModule, MatIconModule, MatTableModule, MatDividerModule, DatePipe],
+  imports: [MatCardModule, MatIconModule, MatTableModule, MatDividerModule, MatButtonModule, MatDialogModule, DatePipe],
   template: `
     <h2>Dashboard</h2>
 
@@ -60,6 +63,15 @@ import { GuestStatistics, Guest } from '../../../core/models';
           <ng-container matColumnDef="date">
             <th mat-header-cell *matHeaderCellDef>Date</th>
             <td mat-cell *matCellDef="let guest">{{ guest.createdAt | date: 'short' }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef>Actions</th>
+            <td mat-cell *matCellDef="let guest">
+              <button mat-icon-button color="primary" (click)="viewGuest(guest)">
+                <mat-icon>visibility</mat-icon>
+              </button>
+            </td>
           </ng-container>
 
           <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
@@ -119,9 +131,9 @@ import { GuestStatistics, Guest } from '../../../core/models';
 export class DashboardComponent implements OnInit {
   stats = signal<{ label: string; value: number; icon: string; color: string }[]>([]);
   recentGuests = signal<Guest[]>([]);
-  displayedColumns = ['name', 'phone', 'country', 'registeredBy', 'date'];
+  displayedColumns = ['name', 'phone', 'country', 'registeredBy', 'date', 'actions'];
 
-  constructor(private guestService: GuestService) {}
+  constructor(private guestService: GuestService, private dialog: MatDialog) {}
 
   ngOnInit(): void {
     const periods = [
@@ -141,5 +153,13 @@ export class DashboardComponent implements OnInit {
     });
 
     this.guestService.getByPeriod('today').subscribe((guests) => this.recentGuests.set(guests));
+  }
+
+  viewGuest(guest: Guest): void {
+    this.dialog.open(GuestPdfPreviewComponent, {
+      width: '900px',
+      maxHeight: '90vh',
+      data: guest
+    });
   }
 }
