@@ -105,7 +105,12 @@ import { RoomType, HotelSettings } from '../../../core/models';
                 <div class="form-row two-col">
                   <mat-form-field appearance="outline">
                     <mat-label>Country / Nationality</mat-label>
-                    <input matInput formControlName="country" placeholder="Philippines" />
+                    <mat-select formControlName="country">
+                      <mat-option value="">Select a country</mat-option>
+                      @for (country of countries; track country) {
+                        <mat-option [value]="country">{{ country }}</mat-option>
+                      }
+                    </mat-select>
                     <mat-icon matPrefix>public</mat-icon>
                   </mat-form-field>
 
@@ -283,6 +288,15 @@ import { RoomType, HotelSettings } from '../../../core/models';
                   <h3>Hotel Policies</h3>
                 </div>
                 <p class="policy-subtitle">Please check each item to acknowledge.</p>
+                <div class="select-all-box">
+                  <mat-checkbox 
+                    [checked]="allPoliciesChecked()" 
+                    (change)="selectAllPolicies($event)"
+                    color="primary"
+                    class="select-all-checkbox">
+                    <strong>Select All / Unselect All</strong>
+                  </mat-checkbox>
+                </div>
                 <div class="policy-list">
                   <mat-checkbox formControlName="policySmoking" color="primary">
                     <strong>Smoking:</strong> Smoking inside rooms is strictly prohibited. A ₱5,000 smoking fee applies.
@@ -636,6 +650,21 @@ import { RoomType, HotelSettings } from '../../../core/models';
       line-height: 1.5;
     }
 
+    /* ============ Select All Box ============ */
+    .select-all-box {
+      background: #e8f5e9;
+      border: 1px solid #a5d6a7;
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-bottom: 16px;
+    }
+    .select-all-checkbox {
+      font-weight: 600 !important;
+    }
+    .select-all-checkbox strong {
+      font-weight: 700;
+    }
+
     /* ============ Agreement ============ */
     .agreement-card {
       border-left: 4px solid #28a745 !important;
@@ -722,6 +751,33 @@ export class GuestRegistrationComponent implements OnInit {
   submitting = signal(false);
   today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
+  countries = [
+    'Afghanistan', 'Albania', 'Algeria', 'Andorra', 'Angola', 'Argentina', 'Armenia', 'Australia',
+    'Austria', 'Azerbaijan', 'Bahamas', 'Bahrain', 'Bangladesh', 'Barbados', 'Belarus', 'Belgium',
+    'Belize', 'Benin', 'Bhutan', 'Bolivia', 'Bosnia and Herzegovina', 'Botswana', 'Brazil', 'Brunei',
+    'Bulgaria', 'Burkina Faso', 'Burundi', 'Cambodia', 'Cameroon', 'Canada', 'Cape Verde', 'Central African Republic',
+    'Chad', 'Chile', 'China', 'Colombia', 'Comoros', 'Congo', 'Costa Rica', 'Croatia', 'Cuba', 'Cyprus',
+    'Czech Republic', 'Czechia', 'Denmark', 'Djibouti', 'Dominica', 'Dominican Republic', 'Ecuador', 'Egypt',
+    'El Salvador', 'Equatorial Guinea', 'Eritrea', 'Estonia', 'Eswatini', 'Ethiopia', 'Fiji', 'Finland',
+    'France', 'Gabon', 'Gambia', 'Georgia', 'Germany', 'Ghana', 'Greece', 'Grenada', 'Guatemala', 'Guinea',
+    'Guinea-Bissau', 'Guyana', 'Haiti', 'Honduras', 'Hong Kong', 'Hungary', 'Iceland', 'India', 'Indonesia',
+    'Iran', 'Iraq', 'Ireland', 'Israel', 'Italy', 'Jamaica', 'Japan', 'Jordan', 'Kazakhstan', 'Kenya',
+    'Kiribati', 'Kosovo', 'Kuwait', 'Kyrgyzstan', 'Laos', 'Latvia', 'Lebanon', 'Lesotho', 'Liberia', 'Libya',
+    'Liechtenstein', 'Lithuania', 'Luxembourg', 'Macao', 'Madagascar', 'Malawi', 'Malaysia', 'Maldives', 'Mali',
+    'Malta', 'Marshall Islands', 'Mauritania', 'Mauritius', 'Mexico', 'Micronesia', 'Moldova', 'Monaco',
+    'Mongolia', 'Montenegro', 'Morocco', 'Mozambique', 'Myanmar', 'Namibia', 'Nauru', 'Nepal', 'Netherlands',
+    'New Zealand', 'Nicaragua', 'Niger', 'Nigeria', 'North Korea', 'North Macedonia', 'Norway', 'Oman',
+    'Pakistan', 'Palau', 'Palestine', 'Panama', 'Papua New Guinea', 'Paraguay', 'Peru', 'Philippines', 'Poland',
+    'Portugal', 'Qatar', 'Romania', 'Russia', 'Rwanda', 'Saint Kitts and Nevis', 'Saint Lucia', 'Saint Vincent',
+    'Samoa', 'San Marino', 'Sao Tome and Principe', 'Saudi Arabia', 'Senegal', 'Serbia', 'Seychelles',
+    'Sierra Leone', 'Singapore', 'Slovakia', 'Slovenia', 'Solomon Islands', 'Somalia', 'South Africa',
+    'South Korea', 'South Sudan', 'Spain', 'Sri Lanka', 'Sudan', 'Suriname', 'Sweden', 'Switzerland', 'Syria',
+    'Taiwan', 'Tajikistan', 'Tanzania', 'Thailand', 'Timor-Leste', 'Togo', 'Tonga', 'Trinidad and Tobago',
+    'Tunisia', 'Turkey', 'Turkmenistan', 'Tuvalu', 'Uganda', 'Ukraine', 'United Arab Emirates', 'United Kingdom',
+    'United States', 'Uruguay', 'Uzbekistan', 'Vanuatu', 'Vatican City', 'Venezuela', 'Vietnam', 'Yemen',
+    'Zambia', 'Zimbabwe'
+  ];
+
   private fb = inject(FormBuilder);
   private guestSignatureData = '';
   private frontDeskSignatureData = '';
@@ -732,7 +788,7 @@ export class GuestRegistrationComponent implements OnInit {
     middleName: [''],
     phoneNumber: [''],
     email: [''],
-    country: [''],
+    country: ['Philippines'],
     vehiclePlateNo: [''],
     validIdPresented: [false],
   });
@@ -853,6 +909,32 @@ export class GuestRegistrationComponent implements OnInit {
     const date = new Date().toISOString().slice(0, 10).replace(/-/g, ''); // "20260413"
     const random = Math.floor(Math.random() * 100000).toString().padStart(5, '0'); // "12345"
     return `${date}${random}`; // "2026041312345"
+  }
+
+  allPoliciesChecked(): boolean {
+    const policies = this.policiesForm.get('policySmoking')?.value &&
+      this.policiesForm.get('policyCorkage')?.value &&
+      this.policiesForm.get('policyNoPets')?.value &&
+      this.policiesForm.get('policyNegligence')?.value &&
+      this.policiesForm.get('policyMinors')?.value &&
+      this.policiesForm.get('policyParking')?.value &&
+      this.policiesForm.get('policySafe')?.value &&
+      this.policiesForm.get('policyForceMajeure')?.value;
+    return !!policies;
+  }
+
+  selectAllPolicies(event: any): void {
+    const isChecked = event.checked;
+    this.policiesForm.patchValue({
+      policySmoking: isChecked,
+      policyCorkage: isChecked,
+      policyNoPets: isChecked,
+      policyNegligence: isChecked,
+      policyMinors: isChecked,
+      policyParking: isChecked,
+      policySafe: isChecked,
+      policyForceMajeure: isChecked,
+    });
   }
 
   onSubmit(): void {
