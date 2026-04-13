@@ -6,6 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { GuestService } from '../../../core/services/guest.service';
 import { Guest } from '../../../core/models';
+import html2pdf from 'html2pdf.js';
 
 @Component({
   selector: 'app-registration-pdf',
@@ -23,8 +24,11 @@ import { Guest } from '../../../core/models';
           <mat-icon>arrow_back</mat-icon> New Registration
         </button>
         <div class="action-buttons">
-          <button mat-flat-button color="primary" (click)="printPdf()">
-            <mat-icon>print</mat-icon> Print / Save PDF
+          <button mat-flat-button color="primary" (click)="downloadAllPdf()">
+            <mat-icon>download</mat-icon> Download PDF
+          </button>
+          <button mat-stroked-button (click)="printPdf()">
+            <mat-icon>print</mat-icon> Print
           </button>
         </div>
       </div>
@@ -297,6 +301,7 @@ import { Guest } from '../../../core/models';
     .action-buttons {
       display: flex;
       gap: 12px;
+      align-items: center;
     }
 
     .loading {
@@ -314,25 +319,25 @@ import { Guest } from '../../../core/models';
       max-width: 800px;
       margin: 0 auto;
       background: white;
-      padding: 40px 48px;
+      padding: 20px 24px;
       border: 1px solid #ddd;
       box-shadow: 0 2px 12px rgba(0,0,0,0.08);
       font-family: 'Segoe UI', Arial, sans-serif;
-      font-size: 13px;
+      font-size: 11px;
       color: #222;
-      line-height: 1.5;
+      line-height: 1.3;
     }
 
     /* ============ Header ============ */
     .pdf-header {
-      margin-bottom: 24px;
-      padding-bottom: 12px;
-      border-bottom: 3px solid #C41E3A;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #C41E3A;
     }
     .logo-section {
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 10px;
     }
     .logo-icon {
       width: 48px;
@@ -348,7 +353,7 @@ import { Guest } from '../../../core/models';
     }
     .pdf-header h1 {
       margin: 0;
-      font-size: 26px;
+      font-size: 20px;
       font-weight: 700;
       color: #C41E3A;
       letter-spacing: 0.5px;
@@ -356,7 +361,7 @@ import { Guest } from '../../../core/models';
 
     /* ============ Info Grid ============ */
     .info-grid {
-      margin-bottom: 16px;
+      margin-bottom: 8px;
     }
     .info-row {
       display: flex;
@@ -367,12 +372,12 @@ import { Guest } from '../../../core/models';
       flex: 1;
     }
     .info-cell {
-      padding: 8px 12px;
+      padding: 4px 8px;
       display: flex;
       flex-direction: column;
     }
     .info-cell .label {
-      font-size: 11px;
+      font-size: 10px;
       color: #888;
       text-transform: uppercase;
       letter-spacing: 0.3px;
@@ -390,13 +395,13 @@ import { Guest } from '../../../core/models';
 
     /* ============ Sections ============ */
     .section {
-      margin-bottom: 14px;
+      margin-bottom: 8px;
     }
     .section h2 {
-      font-size: 13px;
+      font-size: 11px;
       font-weight: 700;
       text-transform: uppercase;
-      margin: 0 0 6px;
+      margin: 0 0 4px;
       color: #111;
     }
     .note {
@@ -409,8 +414,8 @@ import { Guest } from '../../../core/models';
     .companion-table {
       width: 100%;
       border-collapse: collapse;
-      margin: 8px 0;
-      font-size: 12px;
+      margin: 4px 0;
+      font-size: 10px;
     }
     .companion-table th,
     .companion-table td {
@@ -452,51 +457,53 @@ import { Guest } from '../../../core/models';
       font-size: 14px;
     }
     .acknowledgment-text {
-      font-size: 12px;
-      margin: 0 0 10px;
+      font-size: 9px;
+      margin: 0 0 4px;
+      line-height: 1.2;
     }
 
     /* ============ Signature Rows ============ */
     .sig-row {
-      margin: 8px 0;
+      margin: 3px 0;
     }
     .sig-field {
       display: flex;
       align-items: flex-start;
-      gap: 8px;
+      gap: 4px;
     }
     .sig-field.sig-vertical {
       display: flex;
       flex-direction: column;
       align-items: flex-start;
-      gap: 4px;
+      gap: 2px;
     }
     .sig-field .label {
       font-weight: 700;
-      font-size: 12px;
+      font-size: 9px;
       white-space: nowrap;
-      margin-top: 4px;
+      margin-top: 1px;
     }
     .sig-field .label.label-bottom {
       margin-top: 0;
     }
     .sig-blank {
       display: block;
-      height: 50px;
+      height: 30px;
       width: 100%;
-      max-width: 250px;
+      max-width: 180px;
       border-bottom: 1px solid #333;
     }
     .sig-field .value.underline {
       flex: 1;
       border-bottom: 1px solid #333;
-      min-height: 20px;
+      min-height: 14px;
       font-weight: 500;
-      padding-bottom: 2px;
+      font-size: 10px;
+      padding-bottom: 1px;
     }
     .sig-img {
-      height: 50px;
-      max-width: 250px;
+      height: 30px;
+      max-width: 160px;
       object-fit: contain;
     }
     .sig-img-small {
@@ -506,9 +513,9 @@ import { Guest } from '../../../core/models';
     }
 
     .front-desk-section {
-      margin-top: 16px;
-      padding-top: 12px;
-      border-top: 2px solid #333;
+      margin-top: 4px;
+      padding-top: 4px;
+      border-top: 1px solid #333;
     }
 
     .page-break {
@@ -519,7 +526,28 @@ import { Guest } from '../../../core/models';
 
     /* ============ Print Styles ============ */
     @media print {
-      .no-print { display: none !important; }
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+      }
+      div.no-print,
+      div.action-bar,
+      .no-print,
+      .action-bar {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0 !important;
+        width: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+      }
       .pdf-page {
         border: none;
         box-shadow: none;
@@ -563,6 +591,34 @@ export class RegistrationPdfComponent implements OnInit {
 
   printPdf(): void {
     window.print();
+  }
+
+  downloadAllPdf(): void {
+    const guest = this.guest();
+    if (!guest) return;
+
+    // Clone the PDF content to avoid modifying the visible page
+    const pdfContent = document.getElementById('pdfContent');
+    if (!pdfContent) return;
+
+    const clonedContent = pdfContent.cloneNode(true) as HTMLElement;
+
+    // Remove no-print elements
+    clonedContent.querySelectorAll('.no-print, .action-bar').forEach(el => {
+      (el as HTMLElement).remove();
+    });
+
+    // Generate PDF with html2pdf - optimized for A4 single page
+    const fileName = `Registration_${guest.lastName}_${new Date().getTime()}.pdf`;
+    const options: any = {
+      margin: [5, 5, 5, 5],  // Minimal margins for A4 fit
+      filename: fileName,
+      image: { type: 'jpeg' as const, quality: 0.98 },
+      html2canvas: { scale: 2 },
+      jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' }
+    };
+
+    html2pdf().set(options).from(clonedContent).save();
   }
 
   emptyRows(currentCount: number): number[] {
