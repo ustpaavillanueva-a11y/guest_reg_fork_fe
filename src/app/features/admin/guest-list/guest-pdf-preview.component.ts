@@ -1,20 +1,29 @@
-import { Component, Inject } from '@angular/core';
+import { Component, Inject, signal } from '@angular/core';
 import { MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { DatePipe, CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Guest } from '../../../core/models';
 import html2pdf from 'html2pdf.js';
 
 @Component({
   selector: 'app-guest-pdf-preview',
   standalone: true,
-  imports: [DatePipe, CommonModule, MatButtonModule, MatIconModule],
+  imports: [DatePipe, CommonModule, MatButtonModule, MatIconModule, MatProgressSpinnerModule],
   template: `
     <div class="pdf-preview-container">
       <div class="preview-actions">
-        <button mat-raised-button color="primary" (click)="downloadPdf()">
-          <mat-icon>download</mat-icon> Download PDF
+        <button mat-raised-button color="primary" (click)="downloadPdf()" [disabled]="downloading()">
+          @if (downloading()) {
+            <ng-container>
+              <mat-spinner diameter="20" />
+            </ng-container>
+          } @else {
+            <ng-container>
+              <mat-icon>download</mat-icon> Download PDF
+            </ng-container>
+          }
         </button>
       </div>
 
@@ -534,23 +543,68 @@ import html2pdf from 'html2pdf.js';
 })
 export class GuestPdfPreviewComponent {
   guest: Guest;
+  downloading = signal(false);
 
   constructor(@Inject(MAT_DIALOG_DATA) data: Guest) {
     this.guest = data;
   }
 
   downloadPdf(): void {
-    const element = document.getElementById('guestPdfContent');
-    if (!element) return;
+    // If PDF is already stored in Supabase, download from there
+    if (this.guest.agreement.pdfPath) {
+      this.downloadFromSupabase();
+      return;
+    }
 
-    const opt = {
-      margin: 8,
-      filename: `Guest-${this.guest.lastName}-${this.guest.firstName}.pdf`,
-      image: { type: 'png' as const, quality: 0.98 },
-      html2canvas: { scale: 2 },
-      jsPDF: { orientation: 'portrait' as const, unit: 'mm' as const, format: 'a4' }
-    };
+    // Otherwise, generate PDF from template (fallback for old records)
+    this.generatePdfFromTemplate();
+  }
 
-    html2pdf().set(opt).from(element).save();
+  private downloadFromSupabase(): void {
+    this.downloading.set(true);
+    
+    try {
+      if (!this.guest.agreement.pdfPath) {
+        throw new Error('PDF URL not available');
+      }
+      
+      const link = document.createElement('a');
+      link.href = this.guest.agreement.pdfPath;
+      link.download = `Guest-${this.guest.lastName}-${this.guest.firstName}.pdf`;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Download failed:', error);
+      // Fallback to generating from template
+      this.generatePdfFromTemplate();
+    } finally {
+      this.downloading.set(false);
+    }
+  }
+
+  private generatePdfFromTemplate(): void {
+    this.downloading.set(true);
+    
+    try {
+      const element = document.getElementById('guestPdfContent');
+      if (!element) {
+        this.downloading.set(false);
+        return;
+      }
+
+      const opt = {
+        margin: 8,
+        filename: `Guest-${this.guest.lastName}-${this.guest.firstName}.pdf`,
+        image: { type: 'png' as const, quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { orientation: 'portrait' as const, unit: 'mm' as const, format: 'a4' }
+      };
+
+      html2pdf().set(opt).from(element).save();
+    } finally {
+      this.downloading.set(false);
+    }
   }
 }

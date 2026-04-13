@@ -3,14 +3,16 @@ import { MatCardModule } from '@angular/material/card';
 import { MatTableModule } from '@angular/material/table';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { DatePipe } from '@angular/common';
 import { GuestService } from '../../../core/services/guest.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { Guest } from '../../../core/models';
+import { GuestPdfPreviewComponent } from '../../admin/guest-list/guest-pdf-preview.component';
 
 @Component({
   selector: 'app-my-registrations',
-  imports: [MatCardModule, MatTableModule, MatIconModule, MatButtonModule, DatePipe],
+  imports: [MatCardModule, MatTableModule, MatIconModule, MatButtonModule, MatDialogModule, DatePipe],
   template: `
     <h2>My Registrations</h2>
 
@@ -40,7 +42,7 @@ import { Guest } from '../../../core/models';
           <ng-container matColumnDef="actions">
             <th mat-header-cell *matHeaderCellDef>Actions</th>
             <td mat-cell *matCellDef="let g">
-              <button mat-icon-button color="primary">
+              <button mat-icon-button color="primary" (click)="viewGuest(g)">
                 <mat-icon>visibility</mat-icon>
               </button>
             </td>
@@ -61,9 +63,20 @@ export class MyRegistrationsComponent implements OnInit {
   guests = signal<Guest[]>([]);
   displayedColumns = ['name', 'phone', 'country', 'date', 'actions'];
 
-  constructor(private guestService: GuestService) {}
+  constructor(
+    private guestService: GuestService,
+    private dialog: MatDialog
+  ) {}
 
   ngOnInit(): void {
     this.guestService.getAll().subscribe((guests) => this.guests.set(guests));
+  }
+
+  viewGuest(guest: Guest): void {
+    this.dialog.open(GuestPdfPreviewComponent, {
+      width: '900px',
+      maxHeight: '90vh',
+      data: guest
+    });
   }
 }

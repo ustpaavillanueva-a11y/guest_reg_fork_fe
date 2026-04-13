@@ -39,4 +39,10 @@ export class GuestService {
   getByPeriod(period: StatisticsPeriod): Observable<Guest[]> {
     return this.api.get<Guest[]>('/guests/period', { period });
   }
+
+  uploadPdf(guestId: string, pdfFile: File): Observable<{ message: string; pdfUrl: string }> {
+    const formData = new FormData();
+    formData.append('pdf', pdfFile);
+    return this.api.post<{ message: string; pdfUrl: string }>(`/guests/${guestId}/upload-pdf`, formData);
+  }
 }

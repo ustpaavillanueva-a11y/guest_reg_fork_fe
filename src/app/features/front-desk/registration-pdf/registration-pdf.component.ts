@@ -611,7 +611,7 @@ export class RegistrationPdfComponent implements OnInit {
         (el as HTMLElement).remove();
       });
 
-      // Generate PDF and get as data URL
+      // Generate PDF as Blob file
       const options: any = {
         margin: [5, 5, 5, 5],
         image: { type: 'jpeg' as const, quality: 0.98 },
@@ -619,21 +619,33 @@ export class RegistrationPdfComponent implements OnInit {
         jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' }
       };
 
-      html2pdf().set(options).from(clonedContent).output('dataurlstring').then((pdfData: string) => {
-        // Save the PDF data URL to the database
-        this.guestService.update(guest.id, {
-          agreement: {
-            ...guest.agreement,
-            pdfPath: pdfData
-          }
-        }).subscribe({
-          next: (updatedGuest) => {
-            // Update the guest signal with saved PDF
-            this.guest.set(updatedGuest);
+      html2pdf().set(options).from(clonedContent).output('blob').then((pdfBlob: Blob) => {
+        // Create File object from Blob
+        const fileName = `Registration_${guest.lastName}_${guest.firstName}_${new Date().getTime()}.pdf`;
+        const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+
+        // Upload to backend
+        this.guestService.uploadPdf(guest.id, pdfFile).subscribe({
+          next: (response) => {
+            // Save the returned URL to the database
+            this.guestService.update(guest.id, {
+              agreement: {
+                ...guest.agreement,
+                pdfPath: response.pdfUrl
+              }
+            }).subscribe({
+              next: (updatedGuest) => {
+                // Update the guest signal with saved PDF URL
+                this.guest.set(updatedGuest);
+              },
+              error: () => {
+                console.warn('Failed to save PDF URL to database');
+              }
+            });
           },
           error: () => {
-            // Silently fail - PDF generation is not critical to user flow
-            console.warn('Failed to save PDF to database');
+            // Silently fail - PDF upload not critical
+            console.warn('Failed to upload PDF to backend');
           }
         });
       });
