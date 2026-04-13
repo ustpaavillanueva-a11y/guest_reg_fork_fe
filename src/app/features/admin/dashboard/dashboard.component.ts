@@ -5,17 +5,26 @@ import { MatTableModule } from '@angular/material/table';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { DatePipe } from '@angular/common';
 import { GuestService } from '../../../core/services/guest.service';
 import { GuestStatistics, Guest } from '../../../core/models';
 import { GuestPdfPreviewComponent } from '../guest-list/guest-pdf-preview.component';
+import { PwaInstallService } from './pwa-install.service';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [MatCardModule, MatIconModule, MatTableModule, MatDividerModule, MatButtonModule, MatDialogModule, MatProgressSpinnerModule, DatePipe],
+  imports: [MatCardModule, MatIconModule, MatTableModule, MatDividerModule, MatButtonModule, MatDialogModule, MatProgressSpinnerModule, MatTooltipModule, DatePipe],
   template: `
-    <h2>Dashboard</h2>
+    <div class="header">
+      <h2>Dashboard</h2>
+      @if (pwaInstall.canInstall()) {
+        <button mat-raised-button color="accent" (click)="installApp()" matTooltip="Install as app for offline access">
+          <mat-icon>download</mat-icon> Install App
+        </button>
+      }
+    </div>
 
     <!-- Stats Cards -->
     <div class="stats-grid">
@@ -86,7 +95,18 @@ import { GuestPdfPreviewComponent } from '../guest-list/guest-pdf-preview.compon
     </mat-card>
   `,
   styles: `
-    h2 { margin-bottom: 24px; color: #1a1a2e; }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+
+    h2 {
+      margin: 0;
+      color: #1a1a2e;
+      flex: 1;
+    }
 
     .stats-grid {
       display: grid;
@@ -139,7 +159,11 @@ export class DashboardComponent implements OnInit {
   loadingGuestId = signal<string | null>(null);
   displayedColumns = ['name', 'phone', 'country', 'registeredBy', 'date', 'actions'];
 
-  constructor(private guestService: GuestService, private dialog: MatDialog) {}
+  constructor(
+    private guestService: GuestService,
+    private dialog: MatDialog,
+    public pwaInstall: PwaInstallService
+  ) {}
 
   ngOnInit(): void {
     const periods = [
@@ -179,5 +203,9 @@ export class DashboardComponent implements OnInit {
         this.loadingGuestId.set(null);
       }
     });
+  }
+
+  installApp(): void {
+    this.pwaInstall.installApp();
   }
 }

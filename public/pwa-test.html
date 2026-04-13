@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>PWA Test</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .status {
+      padding: 20px;
+      margin: 10px 0;
+      border-radius: 8px;
+      font-weight: bold;
+    }
+    .success { background: #4caf50; color: white; }
+    .error { background: #f44336; color: white; }
+    .warning { background: #ff9800; color: white; }
+    .info { background: #2196f3; color: white; }
+    button {
+      padding: 10px 20px;
+      margin: 5px;
+      font-size: 16px;
+      cursor: pointer;
+      border: none;
+      border-radius: 4px;
+      background: #2196f3;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔍 PWA Test Dashboard</h1>
+  
+  <div id="results"></div>
+
+  <h2>Actions</h2>
+  <button onclick="testServiceWorker()">Test Service Worker</button>
+  <button onclick="testManifest()">Test Manifest</button>
+  <button onclick="testStorage()">Test Storage</button>
+  <button onclick="unregisterSW()">Unregister Service Worker</button>
+
+  <script>
+    const results = document.getElementById('results');
+
+    function addResult(title, status, message) {
+      const statusClass = status === 'success' ? 'success' : status === 'error' ? 'error' : status === 'warning' ? 'warning' : 'info';
+      results.innerHTML += `
+        <div class="status ${statusClass}">
+          <strong>${title}:</strong> ${message}
+        </div>
+      `;
+    }
+
+    // Test manifest
+    async function testManifest() {
+      try {
+        const response = await fetch('/manifest.webmanifest');
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const manifest = await response.json();
+        
+        const checks = [];
+        if (manifest.name) checks.push('✅ name');
+        if (manifest.short_name) checks.push('✅ short_name');
+        if (manifest.start_url) checks.push('✅ start_url');
+        if (manifest.display) checks.push('✅ display: ' + manifest.display);
+        if (manifest.icons?.length) checks.push('✅ icons: ' + manifest.icons.length);
+        
+        addResult('Manifest', 'success', checks.join(' | '));
+      } catch (e) {
+        addResult('Manifest', 'error', e.message);
+      }
+    }
+
+    // Test service worker
+    async function testServiceWorker() {
+      if (!('serviceWorker' in navigator)) {
+        addResult('Service Worker', 'error', 'Not supported by this browser');
+        return;
+      }
+
+      try {
+        const reg = await navigator.serviceWorker.register('/ngsw-worker.js');
+        addResult('Service Worker', 'success', 'Registered - Status: ' + reg.active?.state || 'installing');
+      } catch (e) {
+        addResult('Service Worker', 'error', e.message);
+      }
+    }
+
+    // Test storage
+    function testStorage() {
+      try {
+        const test = 'test-' + Date.now();
+        localStorage.setItem(test, 'ok');
+        localStorage.removeItem(test);
+        addResult('LocalStorage', 'success', 'Working');
+      } catch (e) {
+        addResult('LocalStorage', 'warning', e.message);
+      }
+    }
+
+    // Unregister SW
+    async function unregisterSW() {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      for (let reg of registrations) {
+        await reg.unregister();
+      }
+      addResult('Service Worker', 'success', 'Unregistered all');
+      setTimeout(() => location.reload(), 1000);
+    }
+
+    // Auto-test on load
+    window.addEventListener('load', () => {
+      addResult('Protocol', navigator.protocol === 'https:' ? 'success' : 'warning', 
+        navigator.protocol === 'https:' ? 'HTTPS ✅' : 'HTTP (PWA needs HTTPS in production)');
+      testManifest();
+      testServiceWorker();
+      testStorage();
+    });
+  </script>
+</body>
+</html>
