@@ -1,4 +1,4 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, ChangeDetectorRef } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTableModule } from '@angular/material/table';
@@ -8,14 +8,19 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { DatePipe } from '@angular/common';
+import { BaseChartDirective } from 'ng2-charts';
+import { ChartConfiguration, Chart, LinearScale, CategoryScale, BarController, BarElement, Legend, Tooltip } from 'chart.js';
 import { GuestService } from '../../../core/services/guest.service';
 import { GuestStatistics, Guest } from '../../../core/models';
 import { GuestPdfPreviewComponent } from '../guest-list/guest-pdf-preview.component';
 import { PwaInstallService } from './pwa-install.service';
 
+// Register Chart.js components
+Chart.register(LinearScale, CategoryScale, BarController, BarElement, Legend, Tooltip);
+
 @Component({
   selector: 'app-dashboard',
-  imports: [MatCardModule, MatIconModule, MatTableModule, MatDividerModule, MatButtonModule, MatDialogModule, MatProgressSpinnerModule, MatTooltipModule, DatePipe],
+  imports: [MatCardModule, MatIconModule, MatTableModule, MatDividerModule, MatButtonModule, MatDialogModule, MatProgressSpinnerModule, MatTooltipModule, BaseChartDirective, DatePipe],
   template: `
     <div class="header">
       <h2>Dashboard</h2>
@@ -40,6 +45,30 @@ import { PwaInstallService } from './pwa-install.service';
         </mat-card>
       }
     </div>
+
+    <!-- Monthly Comparison Chart -->
+    <mat-card class="chart-card">
+      <mat-card-header>
+        <mat-card-title>Monthly Guest Comparison (This Year vs Last Year)</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        @if (monthlyChartData && monthlyChartOptions) {
+          <div class="chart-container">
+            <canvas 
+              baseChart 
+              [type]="'bar'" 
+              [data]="monthlyChartData"
+              [options]="monthlyChartOptions">
+            </canvas>
+          </div>
+        } @else {
+          <div class="loading-state">
+            <mat-spinner diameter="40" />
+            <p>Loading monthly data...</p>
+          </div>
+        }
+      </mat-card-content>
+    </mat-card>
 
     <!-- Recent Guests -->
     <mat-card class="table-card">
@@ -151,6 +180,30 @@ import { PwaInstallService } from './pwa-install.service';
     .full-width {
       width: 100%;
     }
+
+    .chart-card {
+      margin-bottom: 32px;
+    }
+
+    .chart-container {
+      position: relative;
+      height: 400px;
+      width: 100%;
+    }
+
+    .loading-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 400px;
+      gap: 16px;
+    }
+
+    .loading-state p {
+      color: #666;
+      margin: 0;
+    }
   `,
 })
 export class DashboardComponent implements OnInit {
@@ -158,12 +211,18 @@ export class DashboardComponent implements OnInit {
   recentGuests = signal<Guest[]>([]);
   loadingGuestId = signal<string | null>(null);
   displayedColumns = ['name', 'phone', 'country', 'registeredBy', 'date', 'actions'];
+  
+  monthlyChartData: any;
+  monthlyChartOptions: ChartConfiguration['options'];
 
   constructor(
     private guestService: GuestService,
     private dialog: MatDialog,
-    public pwaInstall: PwaInstallService
-  ) {}
+    public pwaInstall: PwaInstallService,
+    private cdr: ChangeDetectorRef
+  ) {
+    this.initializeChartOptions();
+  }
 
   ngOnInit(): void {
     const periods = [
@@ -183,6 +242,42 @@ export class DashboardComponent implements OnInit {
     });
 
     this.guestService.getByPeriod('today').subscribe((guests) => this.recentGuests.set(guests));
+
+    // Fetch monthly comparison data for chart
+    this.guestService.getMonthlyComparison().subscribe({
+      next: (data) => {
+        const currentYear = new Date().getFullYear();
+        const lastYear = currentYear - 1;
+        
+        this.monthlyChartData = {
+          labels: data.months,
+          datasets: [
+            {
+              label: `${currentYear}`,
+              data: data.thisYear,
+              backgroundColor: '#388e3c',
+              borderColor: '#2e7d32',
+              borderWidth: 1,
+              borderRadius: 4,
+              hoverBackgroundColor: '#81c784',
+            },
+            {
+              label: `${lastYear}`,
+              data: data.lastYear,
+              backgroundColor: '#ff9800',
+              borderColor: '#f57c00',
+              borderWidth: 1,
+              borderRadius: 4,
+              hoverBackgroundColor: '#ffb74d',
+            },
+          ],
+        };
+        this.cdr.markForCheck();
+      },
+      error: (err) => {
+        console.error('Failed to load monthly comparison data:', err);
+      },
+    });
   }
 
   viewGuest(guest: Guest): void {
@@ -207,5 +302,71 @@ export class DashboardComponent implements OnInit {
 
   installApp(): void {
     this.pwaInstall.installApp();
+  }
+
+  private initializeChartOptions(): void {
+    this.monthlyChartOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'top' as const,
+          labels: {
+            font: { size: 12, weight: 500 },
+            padding: 16,
+            usePointStyle: true,
+            pointStyle: 'circle' as const,
+          },
+        },
+        tooltip: {
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          padding: 12,
+          titleFont: { size: 13, weight: 'bold' as const },
+          bodyFont: { size: 12 },
+          borderColor: '#ddd',
+          borderWidth: 0,
+          displayColors: true,
+          callbacks: {
+            label: (context: any) => {
+              return `${context.dataset.label}: ${context.parsed.y} guests`;
+            },
+          },
+        },
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          grid: {
+            color: 'rgba(0, 0, 0, 0.05)',
+            drawOnChartArea: true,
+            drawTicks: true,
+          },
+          ticks: {
+            font: { size: 11 },
+            color: '#666',
+            stepSize: 5,
+          },
+          title: {
+            display: true,
+            text: 'Number of Guests',
+            font: { size: 12, weight: 'bold' as const },
+          },
+        },
+        x: {
+          grid: {
+            display: false,
+          },
+          ticks: {
+            font: { size: 11 },
+            color: '#666',
+          },
+          title: {
+            display: true,
+            text: 'Month',
+            font: { size: 12, weight: 'bold' as const },
+          },
+        },
+      },
+    } as ChartConfiguration['options'];
   }
 }

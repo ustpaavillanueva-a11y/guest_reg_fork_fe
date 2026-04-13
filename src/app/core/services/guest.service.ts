@@ -45,4 +45,8 @@ export class GuestService {
     formData.append('pdf', pdfFile);
     return this.api.post<{ message: string; pdfUrl: string }>(`/guests/${guestId}/upload-pdf`, formData);
   }
+
+  getMonthlyComparison(): Observable<{ months: string[]; thisYear: number[]; lastYear: number[] }> {
+    return this.api.get<{ months: string[]; thisYear: number[]; lastYear: number[] }>('/guests/monthly-comparison');
+  }
 }
