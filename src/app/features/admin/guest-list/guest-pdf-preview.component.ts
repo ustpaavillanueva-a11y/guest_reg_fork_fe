@@ -4,6 +4,7 @@ import { DatePipe, CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { Guest } from '../../../core/models';
 import html2pdf from 'html2pdf.js';
 
@@ -27,7 +28,14 @@ import html2pdf from 'html2pdf.js';
         </button>
       </div>
 
-      <div class="pdf-page" id="guestPdfContent">
+      <!-- Display PDF from Supabase if available -->
+      @if (guest.agreement.pdfPath) {
+        <div class="pdf-viewer">
+          <iframe [src]="sanitizedPdfUrl" class="pdf-iframe"></iframe>
+        </div>
+      } @else {
+        <!-- Fallback: Show template-based preview -->
+        <div class="pdf-page" id="guestPdfContent">
         @for (reservation of guest.reservations; track reservation.id; let ri = $index) {
           @if (ri > 0) {
             <div class="page-break"></div>
@@ -270,20 +278,24 @@ import html2pdf from 'html2pdf.js';
           </div>
         }
       </div>
+      }
     </div>
   `,
   styles: `
     .pdf-preview-container {
-      padding: 20px;
-      max-width: 1000px;
-      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      width: 100%;
+      gap: 12px;
+      padding: 16px;
     }
 
     .preview-actions {
       display: flex;
       gap: 12px;
-      margin-bottom: 24px;
-      justify-content: center;
+      align-items: center;
+      flex-shrink: 0;
     }
 
     .pdf-page {
@@ -293,6 +305,8 @@ import html2pdf from 'html2pdf.js';
       color: #333;
       font-size: 11px;
       line-height: 1.3;
+      height: 100%;
+      overflow-y: auto;
     }
 
     .page-break {
@@ -530,6 +544,21 @@ import html2pdf from 'html2pdf.js';
       line-height: 1.4;
     }
 
+    .pdf-viewer {
+      flex: 1;
+      width: 100%;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    .pdf-iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
     @media print {
       .preview-actions {
         display: none;
@@ -538,15 +567,30 @@ import html2pdf from 'html2pdf.js';
       .pdf-page {
         box-shadow: none;
       }
+
+      .pdf-viewer {
+        display: none;
+      }
     }
   `
 })
 export class GuestPdfPreviewComponent {
   guest: Guest;
   downloading = signal(false);
+  sanitizedPdfUrl: SafeResourceUrl | null = null;
 
-  constructor(@Inject(MAT_DIALOG_DATA) data: Guest) {
+  constructor(
+    @Inject(MAT_DIALOG_DATA) data: Guest,
+    private sanitizer: DomSanitizer
+  ) {
     this.guest = data;
+    
+    // Sanitize PDF URL for iframe
+    if (this.guest.agreement.pdfPath) {
+      this.sanitizedPdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(
+        this.guest.agreement.pdfPath
+      );
+    }
   }
 
   downloadPdf(): void {
