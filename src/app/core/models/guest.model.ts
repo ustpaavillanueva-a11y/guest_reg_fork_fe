@@ -79,6 +79,7 @@ export interface CreateGuestRequest {
 }
 
 export interface CreateReservationRequest {
+  reservationNumber: string;
   roomNumber: string;
   roomTypeId: string;
   checkInDate: string;

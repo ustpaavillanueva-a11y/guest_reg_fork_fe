@@ -848,6 +848,13 @@ export class GuestRegistrationComponent implements OnInit {
     );
   }
 
+  private generateReservationNumber(): string {
+    // YYYYMMDD (8 digits) + random 5 digits = 13 digits
+    const date = new Date().toISOString().slice(0, 10).replace(/-/g, ''); // "20260413"
+    const random = Math.floor(Math.random() * 100000).toString().padStart(5, '0'); // "12345"
+    return `${date}${random}`; // "2026041312345"
+  }
+
   onSubmit(): void {
     if (!this.isFormValid()) return;
 
@@ -856,6 +863,7 @@ export class GuestRegistrationComponent implements OnInit {
     const guestInfo = this.guestInfoForm.getRawValue();
     const reservations = this.reservations.getRawValue().map((r: any) => ({
       ...r,
+      reservationNumber: this.generateReservationNumber(),
       checkInDate: this.formatDate(r.checkInDate),
       checkOutDate: r.checkOutDate ? this.formatDate(r.checkOutDate) : undefined,
     }));

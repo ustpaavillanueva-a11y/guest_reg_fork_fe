@@ -163,11 +163,11 @@ import { Guest } from '../../../core/models';
           <div class="section">
             <h2>HOUSEKEEPING POLICY</h2>
             <div class="policy-item">
-              <span class="checkbox">{{ guest()!.agreement?.policyHousekeeping1 ? '☑' : '☐' }}</span>
+              <span class="checkbox">{{ guest()!.agreement.policyHousekeeping1 ? '☑' : '☐' }}</span>
               I understand that <strong>make-up room service is upon request only</strong>.
             </div>
             <div class="policy-item">
-              <span class="checkbox">{{ guest()!.agreement?.policyHousekeeping2 ? '☑' : '☐' }}</span>
+              <span class="checkbox">{{ guest()!.agreement.policyHousekeeping2 ? '☑' : '☐' }}</span>
               I acknowledge that housekeeping staff are <strong>not allowed to enter the room without guest consent</strong>.
             </div>
           </div>
@@ -176,35 +176,35 @@ import { Guest } from '../../../core/models';
           <div class="section">
             <h2>HOTEL POLICIES (PLEASE CHECK TO ACKNOWLEDGE)</h2>
             <div class="policy-item">
-              <span class="checkbox">{{ guest()!.agreement?.policySmoking ? '☑' : '☐' }}</span>
+              <span class="checkbox">{{ guest()!.agreement.policySmoking ? '☑' : '☐' }}</span>
               Smoking inside rooms is prohibited. A <strong>₱5,000 smoking fee</strong> applies for violations.
             </div>
             <div class="policy-item">
-              <span class="checkbox">{{ guest()!.agreement?.policyCorkage ? '☑' : '☐' }}</span>
+              <span class="checkbox">{{ guest()!.agreement.policyCorkage ? '☑' : '☐' }}</span>
               A <strong>30% corkage fee</strong> applies to outside food and beverages.
             </div>
             <div class="policy-item">
-              <span class="checkbox">{{ guest()!.agreement?.policyNoPets ? '☑' : '☐' }}</span>
+              <span class="checkbox">{{ guest()!.agreement.policyNoPets ? '☑' : '☐' }}</span>
               <strong>No pets allowed</strong> on hotel premises.
             </div>
             <div class="policy-item">
-              <span class="checkbox">{{ guest()!.agreement?.policyNegligence ? '☑' : '☐' }}</span>
+              <span class="checkbox">{{ guest()!.agreement.policyNegligence ? '☑' : '☐' }}</span>
               Guests are responsible for any loss, damage, or incidents caused by negligence.
             </div>
             <div class="policy-item">
-              <span class="checkbox">{{ guest()!.agreement?.policyMinors ? '☑' : '☐' }}</span>
+              <span class="checkbox">{{ guest()!.agreement.policyMinors ? '☑' : '☐' }}</span>
               Minors must be accompanied by a responsible adult in accordance with local laws.
             </div>
             <div class="policy-item">
-              <span class="checkbox">{{ guest()!.agreement?.policyParking ? '☑' : '☐' }}</span>
+              <span class="checkbox">{{ guest()!.agreement.policyParking ? '☑' : '☐' }}</span>
               Parking is limited and subject to availability.
             </div>
             <div class="policy-item">
-              <span class="checkbox">{{ guest()!.agreement?.policySafe ? '☑' : '☐' }}</span>
+              <span class="checkbox">{{ guest()!.agreement.policySafe ? '☑' : '☐' }}</span>
               The hotel is not liable for loss, theft, or damage to personal belongings. A <strong>digital in-room safe</strong> is provided.
             </div>
             <div class="policy-item">
-              <span class="checkbox">{{ guest()!.agreement?.policyForceMajeure ? '☑' : '☐' }}</span>
+              <span class="checkbox">{{ guest()!.agreement.policyForceMajeure ? '☑' : '☐' }}</span>
               In cases of force majeure (e.g., natural disasters), hotel policies may be adjusted as necessary.
             </div>
           </div>
@@ -213,7 +213,7 @@ import { Guest } from '../../../core/models';
           <div class="section">
             <h2>DATA PRIVACY</h2>
             <div class="policy-item">
-              <span class="checkbox">{{ guest()!.agreement?.policyDataPrivacy ? '☑' : '☐' }}</span>
+              <span class="checkbox">{{ guest()!.agreement.policyDataPrivacy ? '☑' : '☐' }}</span>
               I acknowledge that my personal information will be handled confidentially in accordance with data privacy regulations.
             </div>
           </div>
@@ -229,13 +229,13 @@ import { Guest } from '../../../core/models';
             <div class="sig-row">
               <div class="sig-field">
                 <span class="label">Guest Printed Name:</span>
-                <span class="value underline">{{ guest()!.agreement?.guestPrintedName || '' }}</span>
+                <span class="value underline">{{ guest()!.agreement.guestPrintedName || '' }}</span>
               </div>
             </div>
             <div class="sig-row">
               <div class="sig-field">
                 <span class="label">Guest Signature:</span>
-                @if (guest()!.agreement?.guestSignature) {
+                @if (guest()!.agreement.guestSignature) {
                   <img [src]="guest()!.agreement.guestSignature" class="sig-img" alt="Guest Signature" />
                 } @else {
                   <span class="value underline"></span>
@@ -245,7 +245,7 @@ import { Guest } from '../../../core/models';
             <div class="sig-row">
               <div class="sig-field">
                 <span class="label">Date:</span>
-                <span class="value underline">{{ guest()!.agreement?.signatureDate | date: 'MM/dd/yyyy' }}</span>
+                <span class="value underline">{{ guest()!.agreement.signatureDate | date: 'MM/dd/yyyy' }}</span>
               </div>
             </div>
           </div>
@@ -256,13 +256,13 @@ import { Guest } from '../../../core/models';
             <div class="sig-row">
               <div class="sig-field">
                 <span class="label">Processed by:</span>
-                <span class="value underline">{{ guest()!.agreement?.processedByName || '' }}</span>
+                <span class="value underline">{{ guest()!.agreement.processedByName || '' }}</span>
               </div>
             </div>
             <div class="sig-row">
               <div class="sig-field">
                 <span class="label">Signature:</span>
-                @if (guest()!.agreement?.processedBySignature) {
+                @if (guest()!.agreement.processedBySignature) {
                   <img [src]="guest()!.agreement.processedBySignature" class="sig-img" alt="Front Desk Signature" />
                 } @else {
                   <span class="value underline"></span>
@@ -272,7 +272,7 @@ import { Guest } from '../../../core/models';
             <div class="sig-row">
               <div class="sig-field">
                 <span class="label">Remarks:</span>
-                <span class="value underline">{{ guest()!.agreement?.remarks || '' }}</span>
+                <span class="value underline">{{ guest()!.agreement.remarks || '' }}</span>
               </div>
             </div>
           </div>
