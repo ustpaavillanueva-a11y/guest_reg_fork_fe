@@ -24,9 +24,7 @@ import { AuthService } from '../../../core/services/auth.service';
     <mat-card class="login-card">
       <mat-card-header>
         <div class="login-header">
-          <span class="hotel-icon">🏨</span>
-          <h1>Kekehyu Hotel</h1>
-          <p>Guest Registration System</p>
+         <img src="./login-logo-2.png" alt="">
         </div>
       </mat-card-header>
 
@@ -107,16 +105,7 @@ import { AuthService } from '../../../core/services/auth.service';
         font-size: 48px;
       }
 
-      h1 {
-        margin: 8px 0 4px;
-        color: #C41E3A;
-        font-size: 24px;
-      }
-
-      p {
-        color: #666;
-        margin: 0;
-      }
+    
     }
 
     mat-card-header {
@@ -132,7 +121,7 @@ import { AuthService } from '../../../core/services/auth.service';
       margin-top: 16px;
       height: 48px;
       font-size: 16px;
-      background-color: #C41E3A !important;
+      color: #000000;
     }
 
     .error-banner {
