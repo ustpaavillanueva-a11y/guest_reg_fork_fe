@@ -38,8 +38,7 @@ import html2pdf from 'html2pdf.js';
         <!-- Header -->
         <div class="pdf-header">
           <div class="logo-section">
-            <div class="logo-icon">K</div>
-            <h1>Kekehyu Business Hotel</h1>
+           <img src="/pdf-header.png" alt="Hotel Header" style="height: 80px; width: auto;">
           </div>
         </div>
 
@@ -48,8 +47,8 @@ import html2pdf from 'html2pdf.js';
             <div class="page-break"></div>
             <div class="pdf-header">
               <div class="logo-section">
-                <div class="logo-icon">K</div>
-                <h1>Kekehyu Business Hotel</h1>
+                           <img src="/pdf-header.png" alt="Hotel Header" style="height: 80px; width: auto;">
+
               </div>
             </div>
           }
@@ -319,9 +318,7 @@ import html2pdf from 'html2pdf.js';
       max-width: 800px;
       margin: 0 auto;
       background: white;
-      padding: 20px 24px;
-      border: 1px solid #ddd;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+      padding: 8px 12px;
       font-family: 'Segoe UI', Arial, sans-serif;
       font-size: 11px;
       color: #222;
@@ -330,14 +327,23 @@ import html2pdf from 'html2pdf.js';
 
     /* ============ Header ============ */
     .pdf-header {
-      margin-bottom: 12px;
-      padding-bottom: 8px;
-      border-bottom: 2px solid #C41E3A;
+      margin-bottom: 4px;
+      padding-bottom: 4px;
     }
     .logo-section {
       display: flex;
       align-items: center;
+      justify-content: center;
       gap: 10px;
+      width: 100%;
+    }
+    .logo-section img {
+      max-width: 100%;
+      max-height: 60px;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      display: block;
     }
     .logo-icon {
       width: 48px;
