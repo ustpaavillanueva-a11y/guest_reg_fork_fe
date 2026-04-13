@@ -53,7 +53,7 @@ import { RoomType, HotelSettings } from '../../../core/models';
         </div>
       </div>
 
-      <mat-stepper linear #stepper class="reg-stepper">
+      <mat-stepper linear #stepper class="reg-stepper" (selectionChange)="onStepChange($event)">
         <!-- ============ STEP 1: Guest Information ============ -->
         <mat-step [stepControl]="guestInfoForm" label="Guest Information">
           <form [formGroup]="guestInfoForm" class="step-content">
@@ -378,6 +378,7 @@ import { RoomType, HotelSettings } from '../../../core/models';
                     <mat-label>Guest Printed Name</mat-label>
                     <input matInput formControlName="guestPrintedName" />
                     <mat-icon matPrefix>person</mat-icon>
+                    <mat-icon matSuffix class="edit-icon" title="Edit name">edit</mat-icon>
                   </mat-form-field>
                   <div class="date-box">
                     <mat-icon>calendar_today</mat-icon>
@@ -717,6 +718,16 @@ import { RoomType, HotelSettings } from '../../../core/models';
       margin-bottom: 10px;
     }
 
+    /* ============ Edit Icon ============ */
+    .edit-icon {
+      cursor: pointer;
+      color: #999;
+      transition: color 0.2s;
+    }
+    .edit-icon:hover {
+      color: #1a1a2e;
+    }
+
     /* ============ Step Navigation ============ */
     .step-nav {
       display: flex;
@@ -935,6 +946,25 @@ export class GuestRegistrationComponent implements OnInit {
       policySafe: isChecked,
       policyForceMajeure: isChecked,
     });
+  }
+
+  getFullNameFromGuestInfo(): string {
+    const { firstName, lastName, middleName } = this.guestInfoForm.getRawValue();
+    return [firstName, middleName, lastName].filter(n => n).join(' ').trim();
+  }
+
+  populateGuestName(): void {
+    const fullName = this.getFullNameFromGuestInfo();
+    if (fullName) {
+      this.signatureForm.patchValue({ guestPrintedName: fullName });
+    }
+  }
+
+  onStepChange(event: any): void {
+    // Step 3 is the Agreement & Signature step (0-indexed)
+    if (event.selectedIndex === 3 && !this.signatureForm.get('guestPrintedName')?.value) {
+      this.populateGuestName();
+    }
   }
 
   onSubmit(): void {
