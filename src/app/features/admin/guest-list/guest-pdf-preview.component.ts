@@ -6,6 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { Guest } from '../../../core/models';
+import { GuestService } from '../../../core/services/guest.service';
 import html2pdf from 'html2pdf.js';
 
 @Component({
@@ -29,14 +30,21 @@ import html2pdf from 'html2pdf.js';
       </div>
 
       <!-- Display PDF from Supabase if available -->
-      @if (guest.agreement.pdfPath) {
+      @if (guest?.agreement?.pdfPath) {
         <div class="pdf-viewer">
           <iframe [src]="sanitizedPdfUrl" class="pdf-iframe"></iframe>
         </div>
-      } @else {
+      } @else if (generatingPdf()) {
+        <div class="pdf-viewer">
+          <div class="generating-state">
+            <mat-spinner diameter="40" />
+            <p>Generating PDF...</p>
+          </div>
+        </div>
+      } @else if (guest?.reservations) {
         <!-- Fallback: Show template-based preview -->
         <div class="pdf-page" id="guestPdfContent">
-        @for (reservation of guest.reservations; track reservation.id; let ri = $index) {
+        @for (reservation of guest!.reservations; track reservation.id; let ri = $index) {
           @if (ri > 0) {
             <div class="page-break"></div>
           }
@@ -55,7 +63,7 @@ import html2pdf from 'html2pdf.js';
             <div class="info-row">
               <div class="info-col">
                 <div class="info-label">NAME</div>
-                <div class="info-value">{{ guest.lastName }}, {{ guest.firstName }}{{ guest.middleName ? ' ' + guest.middleName : '' }}</div>
+                <div class=\"info-value\">{{ guest?.lastName }}, {{ guest?.firstName }}{{ guest?.middleName ? ' ' + guest?.middleName : '' }}</div>
               </div>
               <div class="info-col">
                 <div class="info-label">RESERVATION DATE</div>
@@ -85,22 +93,22 @@ import html2pdf from 'html2pdf.js';
             <div class="info-row">
               <div class="info-col">
                 <div class="info-label">PHONE NUMBER</div>
-                <div class="info-value">{{ guest.phoneNumber || '—' }}</div>
+                <div class="info-value">{{ guest?.phoneNumber || '—' }}</div>
               </div>
               <div class="info-col">
                 <div class="info-label">EMAIL</div>
-                <div class="info-value">{{ guest.email || '—' }}</div>
+                <div class="info-value">{{ guest?.email || '—' }}</div>
               </div>
               <div class="info-col">
                 <div class="info-label">COUNTRY</div>
-                <div class="info-value">{{ guest.country || '—' }}</div>
+                <div class="info-value">{{ guest?.country || '—' }}</div>
               </div>
             </div>
 
             <div class="info-row">
               <div class="info-col">
                 <div class="info-label">VEHICLE PLATE NO.</div>
-                <div class="info-value">{{ guest.vehiclePlateNo || '—' }}</div>
+                <div class="info-value">{{ guest?.vehiclePlateNo || '—' }}</div>
               </div>
               <div class="info-col"></div>
               <div class="info-col"></div>
@@ -157,11 +165,11 @@ import html2pdf from 'html2pdf.js';
             <h3 class="section-header">HOUSEKEEPING POLICY</h3>
             <div class="policies-list">
               <div class="policy-item">
-                <input type="checkbox" [checked]="guest.agreement.policyHousekeeping1" disabled />
+                <input type="checkbox" [checked]="guest?.agreement?.policyHousekeeping1" disabled />
                 <span>I understand that <strong>make-up room service is upon request only</strong></span>
               </div>
               <div class="policy-item">
-                <input type="checkbox" [checked]="guest.agreement.policyHousekeeping2" disabled />
+                <input type="checkbox" [checked]="guest?.agreement?.policyHousekeeping2" disabled />
                 <span>I acknowledge that housekeeping staff are <strong>not allowed to enter the room without guest consent</strong></span>
               </div>
             </div>
@@ -172,35 +180,35 @@ import html2pdf from 'html2pdf.js';
             <h3 class="section-header">HOTEL POLICIES (PLEASE CHECK TO ACKNOWLEDGE)</h3>
             <div class="policies-list">
               <div class="policy-item">
-                <input type="checkbox" [checked]="guest.agreement.policySmoking" disabled />
+                <input type="checkbox" [checked]="guest?.agreement?.policySmoking" disabled />
                 <span>Smoking inside rooms is prohibited. A ₱5,000 smoking fee applies for violations.</span>
               </div>
               <div class="policy-item">
-                <input type="checkbox" [checked]="guest.agreement.policyCorkage" disabled />
+                <input type="checkbox" [checked]="guest?.agreement?.policyCorkage" disabled />
                 <span>A 20% corkage fee applied to outside food and beverages.</span>
               </div>
               <div class="policy-item">
-                <input type="checkbox" [checked]="guest.agreement.policyNoPets" disabled />
+                <input type="checkbox" [checked]="guest?.agreement?.policyNoPets" disabled />
                 <span><strong>No pets allowed</strong> on hotel premises.</span>
               </div>
               <div class="policy-item">
-                <input type="checkbox" [checked]="guest.agreement.policyNegligence" disabled />
+                <input type="checkbox" [checked]="guest?.agreement?.policyNegligence" disabled />
                 <span>Guests are responsible for any loss, damage, or incidents caused by negligence.</span>
               </div>
               <div class="policy-item">
-                <input type="checkbox" [checked]="guest.agreement.policyMinors" disabled />
+                <input type="checkbox" [checked]="guest?.agreement?.policyMinors" disabled />
                 <span>Minors must be accompanied by a responsible adult in accordance with local laws.</span>
               </div>
               <div class="policy-item">
-                <input type="checkbox" [checked]="guest.agreement.policyParking" disabled />
+                <input type="checkbox" [checked]="guest?.agreement?.policyParking" disabled />
                 <span>Parking is limited and subject to availability.</span>
               </div>
               <div class="policy-item">
-                <input type="checkbox" [checked]="guest.agreement.policySafe" disabled />
+                <input type="checkbox" [checked]="guest?.agreement?.policySafe" disabled />
                 <span>The hotel is not liable for loss, theft, or damage to personal belongings. A digital in-room safe is provided.</span>
               </div>
               <div class="policy-item">
-                <input type="checkbox" [checked]="guest.agreement.policyForceMajeure" disabled />
+                <input type="checkbox" [checked]="guest?.agreement?.policyForceMajeure" disabled />
                 <span>In case of force majeure (e.g., natural disasters), hotel policies may be adjusted as necessary.</span>
               </div>
             </div>
@@ -211,7 +219,7 @@ import html2pdf from 'html2pdf.js';
             <h3 class="section-header">DATA PRIVACY</h3>
             <div class="policies-list">
               <div class="policy-item">
-                <input type="checkbox" [checked]="guest.agreement.policyDataPrivacy" disabled />
+                <input type="checkbox" [checked]="guest?.agreement?.policyDataPrivacy" disabled />
                 <span>I acknowledge that my personal information will be handled confidentially in accordance with data privacy regulations.</span>
               </div>
             </div>
@@ -226,13 +234,13 @@ import html2pdf from 'html2pdf.js';
             <div class="signature-grid">
               <div class="sig-block">
                 <label>Guest Printed Name</label>
-                <div class="sig-line">{{ guest.agreement.guestPrintedName || '________________________' }}</div>
+                <div class="sig-line">{{ guest?.agreement?.guestPrintedName || '________________________' }}</div>
               </div>
               <div class="sig-block">
                 <label>Guest Signature</label>
                 <div class="sig-line sig-image-container">
-                  @if (guest.agreement.guestSignature) {
-                    <img [src]="guest.agreement.guestSignature" class="signature-image" />
+                  @if (guest?.agreement?.guestSignature) {
+                    <img [src]="guest?.agreement?.guestSignature" class="signature-image" />
                   } @else {
                     <span class="no-sig">________________________</span>
                   }
@@ -243,7 +251,7 @@ import html2pdf from 'html2pdf.js';
             <div class="signature-grid">
               <div class="sig-block">
                 <label>Date</label>
-                <div class="sig-line">{{ guest.agreement.signatureDate | date: 'MM/dd/yyyy' }}</div>
+                <div class="sig-line">{{ guest?.agreement?.signatureDate | date: 'MM/dd/yyyy' }}</div>
               </div>
               <div class="sig-block"></div>
             </div>
@@ -255,13 +263,13 @@ import html2pdf from 'html2pdf.js';
             <div class="signature-grid">
               <div class="sig-block">
                 <label>Processed By</label>
-                <div class="sig-line">{{ guest.agreement.processedByName || '________________________' }}</div>
+                <div class="sig-line">{{ guest?.agreement?.processedByName || '________________________' }}</div>
               </div>
               <div class="sig-block">
                 <label>Signature</label>
                 <div class="sig-line sig-image-container">
-                  @if (guest.agreement.processedBySignature) {
-                    <img [src]="guest.agreement.processedBySignature" class="signature-image" />
+                  @if (guest?.agreement?.processedBySignature) {
+                    <img [src]="guest?.agreement?.processedBySignature" class="signature-image" />
                   } @else {
                     <span class="no-sig">________________________</span>
                   }
@@ -269,10 +277,10 @@ import html2pdf from 'html2pdf.js';
               </div>
             </div>
 
-            @if (guest.agreement.remarks) {
+            @if (guest?.agreement?.remarks) {
               <div class="remarks-section">
                 <label>Remarks</label>
-                <div class="remarks-text">{{ guest.agreement.remarks }}</div>
+                <div class="remarks-text">{{ guest?.agreement?.remarks }}</div>
               </div>
             }
           </div>
@@ -285,10 +293,11 @@ import html2pdf from 'html2pdf.js';
     .pdf-preview-container {
       display: flex;
       flex-direction: column;
-      height: 100%;
+      height: 80vh;
       width: 100%;
-      gap: 12px;
-      padding: 16px;
+      gap: 8px;
+      padding: 8px;
+      overflow: hidden;
     }
 
     .preview-actions {
@@ -300,7 +309,7 @@ import html2pdf from 'html2pdf.js';
 
     .pdf-page {
       background: white;
-      padding: 30px;
+      padding: 8px 12px;
       font-family: 'Arial', sans-serif;
       color: #333;
       font-size: 11px;
@@ -311,12 +320,13 @@ import html2pdf from 'html2pdf.js';
 
     .page-break {
       page-break-after: always;
-      margin: 40px 0;
+      margin: 4px 0;
       border-top: 2px dashed #999;
     }
 
     .pdf-header {
-      margin-bottom: 20px;
+      margin-bottom: 4px;
+      padding-bottom: 4px;
     }
 
     .header-content {
@@ -352,15 +362,15 @@ import html2pdf from 'html2pdf.js';
     }
 
     .info-section {
-      margin-bottom: 16px;
+      margin-bottom: 4px;
     }
 
     .info-row {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
-      margin-bottom: 12px;
-      padding: 0 8px;
+      gap: 8px;
+      margin-bottom: 4px;
+      padding: 0 4px;
     }
 
     .info-col {
@@ -385,19 +395,19 @@ import html2pdf from 'html2pdf.js';
 
     .section-divider {
       border-bottom: 2px solid #999;
-      margin: 16px 0;
+      margin: 4px 0;
     }
 
     .section {
-      margin-bottom: 16px;
+      margin-bottom: 4px;
     }
 
     .section-header {
       font-size: 10px;
       font-weight: bold;
       background: #f0f0f0;
-      padding: 6px 8px;
-      margin: 0 0 8px 0;
+      padding: 3px 4px;
+      margin: 0 0 2px 0;
       text-transform: uppercase;
       letter-spacing: 0.5px;
       border-left: 4px solid #C41E3A;
@@ -405,7 +415,7 @@ import html2pdf from 'html2pdf.js';
 
     .section-note {
       font-size: 9px;
-      margin: 6px 0 10px 0;
+      margin: 2px 0 4px 0;
       color: #666;
     }
 
@@ -413,20 +423,20 @@ import html2pdf from 'html2pdf.js';
       width: 100%;
       border-collapse: collapse;
       font-size: 10px;
-      margin: 8px 0;
+      margin: 2px 0;
     }
 
     .guests-table th {
       background: #e8e8e8;
       border: 1px solid #999;
-      padding: 6px 4px;
+      padding: 2px 2px;
       text-align: left;
       font-weight: bold;
     }
 
     .guests-table td {
       border: 1px solid #999;
-      padding: 6px 4px;
+      padding: 2px 2px;
       min-height: 40px;
     }
 
@@ -438,12 +448,12 @@ import html2pdf from 'html2pdf.js';
 
     .check-times {
       font-size: 10px;
-      padding: 8px;
-      line-height: 1.5;
+      padding: 2px;
+      line-height: 1.3;
     }
 
     .policies-list {
-      margin: 8px 0;
+      margin: 2px 0;
     }
 
     .policy-item {
@@ -547,7 +557,8 @@ import html2pdf from 'html2pdf.js';
     .pdf-viewer {
       flex: 1;
       width: 100%;
-      border: 1px solid #e0e0e0;
+      height: 100%;
+      border: none;
       border-radius: 8px;
       overflow: hidden;
       min-height: 0;
@@ -557,6 +568,20 @@ import html2pdf from 'html2pdf.js';
       width: 100%;
       height: 100%;
       border: none;
+    }
+
+    .generating-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      gap: 16px;
+    }
+
+    .generating-state p {
+      font-size: 14px;
+      color: #666;
     }
 
     @media print {
@@ -575,27 +600,109 @@ import html2pdf from 'html2pdf.js';
   `
 })
 export class GuestPdfPreviewComponent {
-  guest: Guest;
+  guest: Guest | null = null;
   downloading = signal(false);
+  generatingPdf = signal(false);
   sanitizedPdfUrl: SafeResourceUrl | null = null;
 
   constructor(
-    @Inject(MAT_DIALOG_DATA) data: Guest,
-    private sanitizer: DomSanitizer
+    @Inject(MAT_DIALOG_DATA) data: Guest | null,
+    private sanitizer: DomSanitizer,
+    private guestService: GuestService
   ) {
     this.guest = data;
     
     // Sanitize PDF URL for iframe
-    if (this.guest.agreement.pdfPath) {
+    if (this.guest && this.guest.agreement && this.guest.agreement.pdfPath) {
       this.sanitizedPdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(
         this.guest.agreement.pdfPath
       );
+    } else if (this.guest) {
+      // Auto-generate PDF if it doesn't exist
+      this.autoGenerateAndSavePdf();
+    }
+  }
+
+  private autoGenerateAndSavePdf(): void {
+    this.generatingPdf.set(true);
+    
+    // Wait for template to render
+    setTimeout(() => {
+      this.generateAndSaveTemplateAsPdf();
+    }, 500);
+  }
+
+  private generateAndSaveTemplateAsPdf(): void {
+    if (!this.guest) {
+      this.generatingPdf.set(false);
+      return;
+    }
+
+    try {
+      const element = document.getElementById('guestPdfContent');
+      if (!element) {
+        this.generatingPdf.set(false);
+        return;
+      }
+
+      const clonedContent = element.cloneNode(true) as HTMLElement;
+
+      const opt = {
+        margin: 8,
+        filename: `Guest-${this.guest.lastName}-${this.guest.firstName}.pdf`,
+        image: { type: 'png' as const, quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { orientation: 'portrait' as const, unit: 'mm' as const, format: 'a4' }
+      };
+
+      html2pdf()
+        .set(opt)
+        .from(clonedContent)
+        .output('blob')
+        .then((pdfBlob: Blob) => {
+          const fileName = `Guest_${this.guest!.lastName}_${this.guest!.firstName}_${new Date().getTime()}.pdf`;
+          const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+
+          // Upload to Supabase
+          this.guestService.uploadPdf(this.guest!.id, pdfFile).subscribe({
+            next: (response) => {
+              // Save the returned URL to the database
+              this.guestService
+                .update(this.guest!.id, {
+                  agreement: {
+                    ...this.guest!.agreement,
+                    pdfPath: response.pdfUrl
+                  }
+                })
+                .subscribe({
+                  next: (updatedGuest) => {
+                    this.guest = updatedGuest;
+                    this.sanitizedPdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(
+                      updatedGuest.agreement.pdfPath!
+                    );
+                    this.generatingPdf.set(false);
+                  },
+                  error: () => {
+                    this.generatingPdf.set(false);
+                  }
+                });
+            },
+            error: () => {
+              this.generatingPdf.set(false);
+            }
+          });
+        });
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      this.generatingPdf.set(false);
     }
   }
 
   downloadPdf(): void {
+    if (!this.guest) return;
+    
     // If PDF is already stored in Supabase, download from there
-    if (this.guest.agreement.pdfPath) {
+    if (this.guest.agreement && this.guest.agreement.pdfPath) {
       this.downloadFromSupabase();
       return;
     }
@@ -605,13 +712,14 @@ export class GuestPdfPreviewComponent {
   }
 
   private downloadFromSupabase(): void {
+    if (!this.guest || !this.guest.agreement || !this.guest.agreement.pdfPath) {
+      this.generatePdfFromTemplate();
+      return;
+    }
+    
     this.downloading.set(true);
     
     try {
-      if (!this.guest.agreement.pdfPath) {
-        throw new Error('PDF URL not available');
-      }
-      
       const link = document.createElement('a');
       link.href = this.guest.agreement.pdfPath;
       link.download = `Guest-${this.guest.lastName}-${this.guest.firstName}.pdf`;
@@ -629,6 +737,8 @@ export class GuestPdfPreviewComponent {
   }
 
   private generatePdfFromTemplate(): void {
+    if (!this.guest) return;
+    
     this.downloading.set(true);
     
     try {

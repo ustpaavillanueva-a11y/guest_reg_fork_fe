@@ -4,13 +4,15 @@ import { DatePipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { GuestService } from '../../../core/services/guest.service';
 import { Guest } from '../../../core/models';
+import { GuestPdfPreviewComponent } from '../../admin/guest-list/guest-pdf-preview.component';
 import html2pdf from 'html2pdf.js';
 
 @Component({
   selector: 'app-registration-pdf',
-  imports: [DatePipe, MatButtonModule, MatIconModule, MatProgressSpinnerModule, RouterLink],
+  imports: [DatePipe, MatButtonModule, MatIconModule, MatProgressSpinnerModule, RouterLink, MatDialogModule],
   template: `
     @if (loading()) {
       <div class="loading">
@@ -24,6 +26,9 @@ import html2pdf from 'html2pdf.js';
           <mat-icon>arrow_back</mat-icon> New Registration
         </button>
         <div class="action-buttons">
+          <button mat-flat-button color="primary" (click)="viewPdfModal()">
+            <mat-icon>fullscreen</mat-icon> View PDF
+          </button>
           <button mat-flat-button color="primary" (click)="downloadAllPdf()">
             <mat-icon>download</mat-icon> Download PDF
           </button>
@@ -576,6 +581,7 @@ export class RegistrationPdfComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private guestService = inject(GuestService);
+  private dialog = inject(MatDialog);
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
@@ -690,5 +696,17 @@ export class RegistrationPdfComponent implements OnInit {
     const min = 3;
     const remaining = min - currentCount;
     return remaining > 0 ? Array(remaining).fill(0) : [];
+  }
+
+  viewPdfModal(): void {
+    const guest = this.guest();
+    if (!guest) return;
+
+    this.dialog.open(GuestPdfPreviewComponent, {
+      width: '95vw',
+      maxHeight: '98vh',
+      maxWidth: '1400px',
+      data: guest
+    });
   }
 }

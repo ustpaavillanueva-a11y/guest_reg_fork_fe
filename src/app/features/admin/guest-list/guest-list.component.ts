@@ -152,7 +152,8 @@ export class GuestListComponent implements OnInit {
   viewGuest(guest: Guest): void {
     this.dialog.open(GuestPdfPreviewComponent, {
       width: '95vw',
-      maxHeight: '95vh',
+      height: '95vw',
+      maxHeight: '98vh',
       maxWidth: '1400px',
       data: guest
     });
