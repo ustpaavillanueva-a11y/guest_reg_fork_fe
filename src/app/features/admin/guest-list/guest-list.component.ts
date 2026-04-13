@@ -9,6 +9,7 @@ import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { GuestService } from '../../../core/services/guest.service';
@@ -29,6 +30,7 @@ import { GuestPdfPreviewComponent } from './guest-pdf-preview.component';
     MatChipsModule,
     MatDialogModule,
     MatSnackBarModule,
+    MatProgressSpinnerModule,
     DatePipe,
     FormsModule,
   ],
@@ -76,8 +78,12 @@ import { GuestPdfPreviewComponent } from './guest-pdf-preview.component';
           <ng-container matColumnDef="actions">
             <th mat-header-cell *matHeaderCellDef>Actions</th>
             <td mat-cell *matCellDef="let guest">
-              <button mat-icon-button color="primary" (click)="viewGuest(guest)">
-                <mat-icon>visibility</mat-icon>
+              <button mat-icon-button color="primary" (click)="viewGuest(guest)" [disabled]="loadingGuestId() === guest.id">
+                @if (loadingGuestId() === guest.id) {
+                  <mat-spinner diameter="20" />
+                } @else {
+                  <mat-icon>visibility</mat-icon>
+                }
               </button>
               @if (isSuperAdmin()) {
                 <button mat-icon-button color="warn" (click)="deleteGuest(guest)">
@@ -111,6 +117,7 @@ export class GuestListComponent implements OnInit {
   allGuests = signal<Guest[]>([]);
   filteredGuests = signal<Guest[]>([]);
   searchTerm = '';
+  loadingGuestId = signal<string | null>(null);
   displayedColumns = ['name', 'phone', 'country', 'registeredBy', 'date', 'actions'];
 
   constructor(
@@ -150,12 +157,22 @@ export class GuestListComponent implements OnInit {
   }
 
   viewGuest(guest: Guest): void {
-    this.dialog.open(GuestPdfPreviewComponent, {
-      width: '95vw',
-      height: '95vw',
-      maxHeight: '98vh',
-      maxWidth: '1400px',
-      data: guest
+    this.loadingGuestId.set(guest.id);
+
+    // Fetch full guest data with all reservations
+    this.guestService.getById(guest.id).subscribe({
+      next: (fullGuest) => {
+        this.loadingGuestId.set(null);
+        this.dialog.open(GuestPdfPreviewComponent, {
+          width: '95vw',
+          maxHeight: '98vh',
+          maxWidth: '1400px',
+          data: fullGuest
+        });
+      },
+      error: () => {
+        this.loadingGuestId.set(null);
+      }
     });
   }
 

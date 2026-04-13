@@ -4,6 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTableModule } from '@angular/material/table';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatButtonModule } from '@angular/material/button';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { DatePipe } from '@angular/common';
 import { GuestService } from '../../../core/services/guest.service';
@@ -12,7 +13,7 @@ import { GuestPdfPreviewComponent } from '../guest-list/guest-pdf-preview.compon
 
 @Component({
   selector: 'app-dashboard',
-  imports: [MatCardModule, MatIconModule, MatTableModule, MatDividerModule, MatButtonModule, MatDialogModule, DatePipe],
+  imports: [MatCardModule, MatIconModule, MatTableModule, MatDividerModule, MatButtonModule, MatDialogModule, MatProgressSpinnerModule, DatePipe],
   template: `
     <h2>Dashboard</h2>
 
@@ -68,8 +69,12 @@ import { GuestPdfPreviewComponent } from '../guest-list/guest-pdf-preview.compon
           <ng-container matColumnDef="actions">
             <th mat-header-cell *matHeaderCellDef>Actions</th>
             <td mat-cell *matCellDef="let guest">
-              <button mat-icon-button color="primary" (click)="viewGuest(guest)">
-                <mat-icon>visibility</mat-icon>
+              <button mat-icon-button color="primary" (click)="viewGuest(guest)" [disabled]="loadingGuestId() === guest.id">
+                @if (loadingGuestId() === guest.id) {
+                  <mat-spinner diameter="20" />
+                } @else {
+                  <mat-icon>visibility</mat-icon>
+                }
               </button>
             </td>
           </ng-container>
@@ -131,6 +136,7 @@ import { GuestPdfPreviewComponent } from '../guest-list/guest-pdf-preview.compon
 export class DashboardComponent implements OnInit {
   stats = signal<{ label: string; value: number; icon: string; color: string }[]>([]);
   recentGuests = signal<Guest[]>([]);
+  loadingGuestId = signal<string | null>(null);
   displayedColumns = ['name', 'phone', 'country', 'registeredBy', 'date', 'actions'];
 
   constructor(private guestService: GuestService, private dialog: MatDialog) {}
@@ -156,11 +162,22 @@ export class DashboardComponent implements OnInit {
   }
 
   viewGuest(guest: Guest): void {
-    this.dialog.open(GuestPdfPreviewComponent, {
-      width: '95vw',
-      maxHeight: '98vh',
-      maxWidth: '1400px',
-      data: guest
+    this.loadingGuestId.set(guest.id);
+
+    // Fetch full guest data with all reservations
+    this.guestService.getById(guest.id).subscribe({
+      next: (fullGuest) => {
+        this.loadingGuestId.set(null);
+        this.dialog.open(GuestPdfPreviewComponent, {
+          width: '95vw',
+          maxHeight: '98vh',
+          maxWidth: '1400px',
+          data: fullGuest
+        });
+      },
+      error: () => {
+        this.loadingGuestId.set(null);
+      }
     });
   }
 }
