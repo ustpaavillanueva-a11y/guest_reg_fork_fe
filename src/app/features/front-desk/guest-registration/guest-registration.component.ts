@@ -45,7 +45,6 @@ import { RoomType, HotelSettings } from '../../../core/models';
       <!-- Header Banner -->
       <div class="reg-header">
         <div class="header-content">
-          <mat-icon class="header-icon">hotel</mat-icon>
           <div>
             <h1>Guest Registration</h1>
             <p>{{ today }}</p>

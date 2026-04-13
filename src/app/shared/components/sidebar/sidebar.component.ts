@@ -27,8 +27,8 @@ interface NavItem {
   ],
   template: `
     <div class="sidebar-header">
-      <span class="hotel-icon">🏨</span>
-      <span class="hotel-name">Kekehyu Hotel</span>
+               <img src="./dashboard-logo.png" alt="">
+
     </div>
 
     <mat-divider />
