@@ -4,8 +4,10 @@ import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { AuthService } from '../../../core/services/auth.service';
 import { UserRole } from '../../../core/models';
+import { UserProfileDialogComponent } from '../header/user-profile-dialog.component';
 
 interface NavItem {
   label: string;
@@ -24,6 +26,7 @@ interface NavItem {
     MatIconModule,
     MatExpansionModule,
     MatDividerModule,
+    MatDialogModule,
   ],
   template: `
     <div class="sidebar-header">
@@ -71,7 +74,7 @@ interface NavItem {
     <div class="sidebar-footer">
       <mat-divider />
       <mat-nav-list>
-        <a mat-list-item routerLink="/profile" routerLinkActive="active-link" (click)="menuItemClick.emit()">
+        <a mat-list-item (click)="openProfileModal()" class="clickable-item">
           <mat-icon matListItemIcon>person</mat-icon>
           <span>Profile</span>
         </a>
@@ -87,7 +90,7 @@ interface NavItem {
       display: flex;
       flex-direction: column;
       height: 100%;
-      color: #e0e0e0;
+      color: #ffffff;
     }
 
     .sidebar-header {
@@ -97,22 +100,21 @@ interface NavItem {
       gap: 12px;
     }
 
-    .hotel-icon {
-      font-size: 28px;
-    }
-
-    .hotel-name {
-      font-size: 18px;
-      font-weight: 500;
-      color: #FFD700;
-    }
-
+    
     mat-nav-list {
       flex: 1;
     }
 
     mat-nav-list a {
-      color: #e0e0e0 !important;
+      color: #ffffff !important;
+    }
+
+    mat-nav-list a mat-icon {
+      color: #ffffff !important;
+    }
+
+    mat-nav-list a span {
+      color: #ffffff !important;
     }
 
     .active-link {
@@ -121,20 +123,65 @@ interface NavItem {
       border-left: 3px solid #C41E3A;
     }
 
+    .active-link mat-icon,
+    .active-link span {
+      color: #FFD700 !important;
+    }
+
     .nav-expansion {
       background: transparent !important;
-      color: #e0e0e0 !important;
+      color: #ffffff !important;
+      --mat-list-list-item-label-text-color: #ffffff;
+      --mat-sys-on-surface: #ffffff;
+    }
 
-      mat-panel-title {
-        color: #e0e0e0;
-        display: flex;
-        align-items: center;
-        gap: 16px;
+    .nav-expansion mat-panel-title {
+      color: #ffffff !important;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
 
-        mat-icon {
-          color: #e0e0e0;
-        }
-      }
+    .nav-expansion mat-panel-title mat-icon {
+      color: #ffffff !important;
+    }
+
+    .nav-expansion mat-panel-title span {
+      color: #ffffff !important;
+    }
+
+    .nav-expansion a {
+      color: #ffffff !important;
+      --mat-list-list-item-label-text-color: #ffffff !important;
+    }
+
+    .nav-expansion a span {
+      color: #ffffff !important;
+    }
+
+    .nav-expansion ::ng-deep .mdc-list-item__content {
+      color: #ffffff !important;
+    }
+
+    .nav-expansion ::ng-deep .mdc-list-item {
+      color: #ffffff !important;
+    }
+
+    .nav-expansion ::ng-deep .mat-mdc-list-item {
+      --mdc-theme-text-primary-on-background: #ffffff;
+      --mdc-typography-body2-color: #ffffff;
+    }
+
+    ::ng-deep .nav-expansion a {
+      color: #ffffff !important;
+    }
+
+    ::ng-deep .nav-expansion .mdc-list-item__primary-text {
+      color: #ffffff !important;
+    }
+
+    .clickable-item {
+      cursor: pointer;
     }
 
     .sidebar-footer {
@@ -145,7 +192,7 @@ interface NavItem {
 export class SidebarComponent {
   menuItemClick = output<void>();
 
-  constructor(private authService: AuthService) {}
+  constructor(private authService: AuthService, private dialog: MatDialog) {}
 
   private navItems: NavItem[] = [
     {
@@ -220,6 +267,13 @@ export class SidebarComponent {
   visibleNavItems = computed(() =>
     this.navItems.filter((item) => this.authService.hasRole(...item.roles))
   );
+
+  openProfileModal(): void {
+    this.dialog.open(UserProfileDialogComponent, {
+      width: '400px',
+      data: this.authService.user()
+    });
+  }
 
   onLogout(): void {
     this.authService.logout();

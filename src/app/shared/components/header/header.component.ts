@@ -4,11 +4,13 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { AuthService } from '../../../core/services/auth.service';
+import { UserProfileDialogComponent } from './user-profile-dialog.component';
 
 @Component({
   selector: 'app-header',
-  imports: [MatToolbarModule, MatIconModule, MatButtonModule, MatMenuModule, MatDividerModule],
+  imports: [MatToolbarModule, MatIconModule, MatButtonModule, MatMenuModule, MatDividerModule, MatDialogModule],
   template: `
     <mat-toolbar color="primary" class="header">
       <button mat-icon-button (click)="toggleSidenav.emit()">
@@ -27,7 +29,7 @@ import { AuthService } from '../../../core/services/auth.service';
           <small>{{ userRole() }}</small>
         </div>
         <mat-divider />
-        <button mat-menu-item>
+        <button mat-menu-item (click)="openProfileModal()">
           <mat-icon>person</mat-icon>
           <span>Profile</span>
         </button>
@@ -67,7 +69,7 @@ import { AuthService } from '../../../core/services/auth.service';
 export class HeaderComponent {
   toggleSidenav = output<void>();
 
-  constructor(private authService: AuthService) {}
+  constructor(private authService: AuthService, private dialog: MatDialog) {}
 
   userName = computed(() => {
     const user = this.authService.user();
@@ -78,6 +80,13 @@ export class HeaderComponent {
     const role = this.authService.userRole();
     return role?.replace('_', ' ') ?? '';
   });
+
+  openProfileModal(): void {
+    this.dialog.open(UserProfileDialogComponent, {
+      width: '400px',
+      data: this.authService.user()
+    });
+  }
 
   onLogout(): void {
     this.authService.logout();
