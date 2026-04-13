@@ -233,13 +233,13 @@ import { Guest } from '../../../core/models';
               </div>
             </div>
             <div class="sig-row">
-              <div class="sig-field">
-                <span class="label">Guest Signature:</span>
+              <div class="sig-field sig-vertical">
                 @if (guest()!.agreement.guestSignature) {
                   <img [src]="guest()!.agreement.guestSignature" class="sig-img" alt="Guest Signature" />
                 } @else {
-                  <span class="value underline"></span>
+                  <span class="value underline sig-blank"></span>
                 }
+                <span class="label label-bottom">Guest Signature:</span>
               </div>
             </div>
             <div class="sig-row">
@@ -260,13 +260,13 @@ import { Guest } from '../../../core/models';
               </div>
             </div>
             <div class="sig-row">
-              <div class="sig-field">
-                <span class="label">Signature:</span>
+              <div class="sig-field sig-vertical">
                 @if (guest()!.agreement.processedBySignature) {
                   <img [src]="guest()!.agreement.processedBySignature" class="sig-img" alt="Front Desk Signature" />
                 } @else {
-                  <span class="value underline"></span>
+                  <span class="value underline sig-blank"></span>
                 }
+                <span class="label label-bottom">Signature:</span>
               </div>
             </div>
             <div class="sig-row">
@@ -462,13 +462,30 @@ import { Guest } from '../../../core/models';
     }
     .sig-field {
       display: flex;
-      align-items: flex-end;
+      align-items: flex-start;
       gap: 8px;
+    }
+    .sig-field.sig-vertical {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 4px;
     }
     .sig-field .label {
       font-weight: 700;
       font-size: 12px;
       white-space: nowrap;
+      margin-top: 4px;
+    }
+    .sig-field .label.label-bottom {
+      margin-top: 0;
+    }
+    .sig-blank {
+      display: block;
+      height: 50px;
+      width: 100%;
+      max-width: 250px;
+      border-bottom: 1px solid #333;
     }
     .sig-field .value.underline {
       flex: 1;
