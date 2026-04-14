@@ -1,6 +1,7 @@
 import { Component, signal, OnInit, inject, ViewChild } from '@angular/core';
 import { ReactiveFormsModule, FormBuilder, FormArray, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
+import { DatePipe } from '@angular/common';
 import { MatStepperModule, MatStepper } from '@angular/material/stepper';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -14,6 +15,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { provideNativeDateAdapter } from '@angular/material/core';
+import html2pdf from 'html2pdf.js';
 import { SignaturePadComponent } from '../../../shared/components/signature-pad/signature-pad.component';
 import { GuestService } from '../../../core/services/guest.service';
 import { RoomTypeService } from '../../../core/services/room-type.service';
@@ -25,6 +27,7 @@ import { RoomType, HotelSettings } from '../../../core/models';
   selector: 'app-guest-registration',
   imports: [
     ReactiveFormsModule,
+    DatePipe,
     MatStepperModule,
     MatFormFieldModule,
     MatInputModule,
@@ -57,306 +60,107 @@ import { RoomType, HotelSettings } from '../../../core/models';
       </div>
 
       <mat-stepper linear #stepper class="reg-stepper" (selectionChange)="onStepChange($event)">
-        <!-- ============ STEP 1: Guest Information ============ -->
-        <mat-step [stepControl]="guestInfoForm" label="Guest Information">
-          <form [formGroup]="guestInfoForm" class="step-content">
+        <!-- ============ STEP 1: Details Confirmation ============ -->
+        <mat-step label="Details Confirmation">
+          <form class="step-content">
+            <!-- Guest Information Display -->
             <mat-card class="form-card">
               <mat-card-content>
                 <div class="section-title">
                   <mat-icon>person</mat-icon>
-                  <h3>Personal Details</h3>
+                  <h3>Guest Information</h3>
                 </div>
 
-                <div class="form-row three-col">
-                  <mat-form-field appearance="outline">
-                    <mat-label>First Name</mat-label>
-                    <input matInput formControlName="firstName" placeholder="Juan" />
-                    <mat-icon matPrefix>badge</mat-icon>
-                    @if (guestInfoForm.get('firstName')?.hasError('required') && guestInfoForm.get('firstName')?.touched) {
-                      <mat-error>First name is required</mat-error>
-                    }
-                  </mat-form-field>
-
-                  <mat-form-field appearance="outline">
-                    <mat-label>Last Name</mat-label>
-                    <input matInput formControlName="lastName" placeholder="Dela Cruz" />
-                    @if (guestInfoForm.get('lastName')?.hasError('required') && guestInfoForm.get('lastName')?.touched) {
-                      <mat-error>Last name is required</mat-error>
-                    }
-                  </mat-form-field>
-
-                  <mat-form-field appearance="outline">
-                    <mat-label>Middle Name</mat-label>
-                    <input matInput formControlName="middleName" placeholder="(Optional)" />
-                  </mat-form-field>
+                <div class="details-row two-col">
+                  <div class="detail-item">
+                    <label>First Name</label>
+                    <p>{{ guestInfoForm.get('firstName')?.value }}</p>
+                  </div>
+                  <div class="detail-item">
+                    <label>Last Name</label>
+                    <p>{{ guestInfoForm.get('lastName')?.value }}</p>
+                  </div>
                 </div>
 
-                <div class="form-row two-col">
-                  <mat-form-field appearance="outline">
-                    <mat-label>Phone Number</mat-label>
-                    <input matInput formControlName="phoneNumber" placeholder="0917 826 8950" />
-                    <mat-icon matPrefix>phone</mat-icon>
-                  </mat-form-field>
-
-                  <mat-form-field appearance="outline">
-                    <mat-label>Email Address</mat-label>
-                    <input matInput formControlName="email" type="email" placeholder="guest@email.com" />
-                    <mat-icon matPrefix>email</mat-icon>
-                  </mat-form-field>
+                <div class="details-row two-col">
+                  <div class="detail-item">
+                    <label>Email</label>
+                    <p>{{ guestInfoForm.get('email')?.value }}</p>
+                  </div>
+                  <div class="detail-item">
+                    <label>Phone</label>
+                    <p>{{ guestInfoForm.get('phoneNumber')?.value }}</p>
+                  </div>
                 </div>
 
-                <div class="form-row two-col">
-                  <mat-form-field appearance="outline">
-                    <mat-label>Country / Nationality</mat-label>
-                    <mat-select formControlName="country">
-                      <mat-option value="">Select a country</mat-option>
-                      @for (country of countries; track country) {
-                        <mat-option [value]="country">{{ country }}</mat-option>
-                      }
-                    </mat-select>
-                    <mat-icon matPrefix>public</mat-icon>
-                  </mat-form-field>
+                <div class="details-row two-col">
+                  <div class="detail-item">
+                    <label>Country</label>
+                    <p>{{ guestInfoForm.get('country')?.value }}</p>
+                  </div>
+                  <div class="detail-item">
+                    <label>Vehicle Plate</label>
+                    <p>{{ guestInfoForm.get('vehiclePlateNo')?.value }}</p>
+                  </div>
+                </div>
+              </mat-card-content>
+            </mat-card>
 
-                  <mat-form-field appearance="outline">
-                    <mat-label>Vehicle Plate No.</mat-label>
-                    <input matInput formControlName="vehiclePlateNo" placeholder="ABC 1234" />
-                    <mat-icon matPrefix>directions_car</mat-icon>
-                  </mat-form-field>
+            <!-- Room Reservations Display -->
+            <mat-card class="form-card">
+              <mat-card-content>
+                <div class="section-title">
+                  <mat-icon>meeting_room</mat-icon>
+                  <h3>Room Details</h3>
                 </div>
 
-                <div class="id-check">
-                  <mat-checkbox formControlName="validIdPresented" color="primary">
-                    <span class="checkbox-label">Valid ID Presented</span>
-                  </mat-checkbox>
+                @for (reservation of reservations.controls; track $index; let i = $index) {
+                  <div class="reservation-block">
+                    <h4>Room {{ i + 1 }}</h4>
+                    <div class="details-row four-col">
+                      <div class="detail-item">
+                        <label>Room Number</label>
+                        <p>{{ reservation.get('roomNumber')?.value }}</p>
+                      </div>
+                      <div class="detail-item">
+                        <label>Check-in</label>
+                        <p>{{ reservation.get('checkInDate')?.value | date:'MMM dd, yyyy' }}</p>
+                      </div>
+                      <div class="detail-item">
+                        <label>Check-out</label>
+                        <p>{{ reservation.get('checkOutDate')?.value | date:'MMM dd, yyyy' }}</p>
+                      </div>
+                      <div class="detail-item">
+                        <label>Room Type</label>
+                        <p>{{ reservation.get('roomTypeId')?.value }}</p>
+                      </div>
+                    </div>
+                  </div>
+                }
+              </mat-card-content>
+            </mat-card>
+
+            <!-- Policies Summary -->
+            <mat-card class="form-card">
+              <mat-card-content>
+                <div class="section-title">
+                  <mat-icon>gavel</mat-icon>
+                  <h3>Policies Acknowledged</h3>
                 </div>
+                <p class="acknowledgment">✓ All hotel policies have been acknowledged and accepted by the guest.</p>
               </mat-card-content>
             </mat-card>
 
             <div class="step-nav">
               <span></span>
-              <button mat-flat-button color="primary" matStepperNext [disabled]="guestInfoForm.invalid" class="nav-btn">
-                Next: Room Details <mat-icon iconPositionEnd>arrow_forward</mat-icon>
-              </button>
-            </div>
-          </form>
-        </mat-step>
-
-        <!-- ============ STEP 2: Room Reservations ============ -->
-        <mat-step [stepControl]="reservationsForm" label="Room Details">
-          <form [formGroup]="reservationsForm" class="step-content">
-            <div formArrayName="reservations">
-            @for (reservation of reservations.controls; track $index; let i = $index) {
-              <mat-card class="form-card room-card">
-                <mat-card-content>
-                  <div class="section-title">
-                    <mat-icon>meeting_room</mat-icon>
-                    <h3>Room {{ i + 1 }}</h3>
-                    <span class="spacer"></span>
-                    @if (reservations.length > 1) {
-                      <button mat-icon-button color="warn" (click)="removeReservation(i)" class="remove-btn">
-                        <mat-icon>close</mat-icon>
-                      </button>
-                    }
-                  </div>
-
-                  <div [formGroupName]="i">
-                    <div class="form-row two-col">
-                      <mat-form-field appearance="outline">
-                        <mat-label>Room Type</mat-label>
-                        <mat-select formControlName="roomTypeId">
-                          @for (rt of roomTypes(); track rt.id) {
-                            <mat-option [value]="rt.id">{{ rt.name }}</mat-option>
-                          }
-                        </mat-select>
-                        <mat-icon matPrefix>king_bed</mat-icon>
-                      </mat-form-field>
-
-                      <mat-form-field appearance="outline">
-                        <mat-label>Room Number</mat-label>
-                        <input matInput formControlName="roomNumber" />
-                        <mat-icon matPrefix>door_front</mat-icon>
-                      </mat-form-field>
-                    </div>
-
-                    <div class="form-row four-col">
-                      <mat-form-field appearance="outline">
-                        <mat-label>Check-in Date</mat-label>
-                        <input matInput [matDatepicker]="checkinPicker" formControlName="checkInDate" />
-                        <mat-datepicker-toggle matSuffix [for]="checkinPicker" />
-                        <mat-datepicker #checkinPicker />
-                      </mat-form-field>
-
-                      <mat-form-field appearance="outline">
-                        <mat-label>Check-in Time</mat-label>
-                        <input matInput formControlName="checkInTime" type="time" />
-                        <mat-icon matPrefix>schedule</mat-icon>
-                      </mat-form-field>
-
-                      <mat-form-field appearance="outline">
-                        <mat-label>Check-out Date</mat-label>
-                        <input matInput [matDatepicker]="checkoutPicker" formControlName="checkOutDate" />
-                        <mat-datepicker-toggle matSuffix [for]="checkoutPicker" />
-                        <mat-datepicker #checkoutPicker />
-                      </mat-form-field>
-
-                      <mat-form-field appearance="outline">
-                        <mat-label>Check-out Time</mat-label>
-                        <input matInput formControlName="checkOutTime" type="time" />
-                        <mat-icon matPrefix>schedule</mat-icon>
-                      </mat-form-field>
-                    </div>
-
-                    <!-- Accompanying Guests -->
-                    <div class="companions-section">
-                      <div class="section-title small">
-                        <mat-icon>group</mat-icon>
-                        <h4>Accompanying Guests</h4>
-                      </div>
-
-                      <div formArrayName="accompanyingGuests">
-                        @for (ag of getAccompanyingGuests(i).controls; track $index; let j = $index) {
-                          <div class="companion-row" [formGroupName]="j">
-                            <span class="companion-num">{{ j + 1 }}</span>
-                            <mat-form-field appearance="outline" class="companion-name">
-                              <mat-label>First Name</mat-label>
-                              <input matInput formControlName="firstName" />
-                            </mat-form-field>
-                            <mat-form-field appearance="outline" class="companion-name">
-                              <mat-label>Last Name</mat-label>
-                              <input matInput formControlName="lastName" />
-                            </mat-form-field>
-                            <mat-form-field appearance="outline" class="companion-middle">
-                              <mat-label>M.I.</mat-label>
-                              <input matInput formControlName="middleName" />
-                            </mat-form-field>
-                            <mat-checkbox formControlName="validIdPresented" color="primary">ID</mat-checkbox>
-                            <button mat-icon-button color="warn" (click)="removeAccompanyingGuest(i, j)">
-                              <mat-icon>remove_circle_outline</mat-icon>
-                            </button>
-                          </div>
-                        }
-                      </div>
-
-                      <button mat-stroked-button type="button" (click)="addAccompanyingGuest(i)" class="add-companion-btn">
-                        <mat-icon>person_add</mat-icon> Add Companion
-                      </button>
-                    </div>
-                  </div>
-                </mat-card-content>
-              </mat-card>
-            }
-            </div>
-
-            <button mat-stroked-button color="primary" type="button" (click)="addReservation()" class="add-room-btn">
-              <mat-icon>add_circle_outline</mat-icon> Add Another Room
-            </button>
-
-            <div class="step-nav">
-              <button mat-button matStepperPrevious class="back-btn">
-                <mat-icon>arrow_back</mat-icon> Back
-              </button>
               <button mat-flat-button color="primary" matStepperNext class="nav-btn">
-                Next: Policies <mat-icon iconPositionEnd>arrow_forward</mat-icon>
-              </button>
-            </div>
-          </form>
-        </mat-step>
-
-        <!-- ============ STEP 3: Policies ============ -->
-        <mat-step [stepControl]="policiesForm" label="Policies">
-          <form [formGroup]="policiesForm" class="step-content">
-            <!-- Housekeeping -->
-            <mat-card class="form-card policy-card">
-              <mat-card-content>
-                <div class="section-title policy-title">
-                  <mat-icon>cleaning_services</mat-icon>
-                  <h3>Housekeeping Policy</h3>
-                </div>
-                <div class="policy-list">
-                  <mat-checkbox formControlName="policyHousekeeping1" color="primary">
-                    Make-up room service is upon request only.
-                  </mat-checkbox>
-                  <mat-checkbox formControlName="policyHousekeeping2" color="primary">
-                    Housekeeping staff are not allowed to enter the room without guest consent.
-                  </mat-checkbox>
-                </div>
-              </mat-card-content>
-            </mat-card>
-
-            <!-- Hotel Policies -->
-            <mat-card class="form-card policy-card">
-              <mat-card-content>
-                <div class="section-title policy-title">
-                  <mat-icon>gavel</mat-icon>
-                  <h3>Hotel Policies</h3>
-                </div>
-                <p class="policy-subtitle">Please check each item to acknowledge.</p>
-                <div class="select-all-box">
-                  <mat-checkbox 
-                    [checked]="allPoliciesChecked()" 
-                    (change)="selectAllPolicies($event)"
-                    color="primary"
-                    class="select-all-checkbox">
-                    <strong>Select All / Unselect All</strong>
-                  </mat-checkbox>
-                </div>
-                <div class="policy-list">
-                  <mat-checkbox formControlName="policySmoking" color="primary">
-                    <strong>Smoking:</strong> Smoking inside rooms is strictly prohibited. A ₱5,000 smoking fee applies.
-                  </mat-checkbox>
-                  <mat-checkbox formControlName="policyCorkage" color="primary">
-                    <strong>Corkage:</strong> A 30% corkage fee will be charged.
-                  </mat-checkbox>
-                  <mat-checkbox formControlName="policyNoPets" color="primary">
-                    <strong>Pets:</strong> No pets are allowed inside the hotel premises.
-                  </mat-checkbox>
-                  <mat-checkbox formControlName="policyNegligence" color="primary">
-                    <strong>Negligence:</strong> Guests shall be held liable for any damages caused by negligence.
-                  </mat-checkbox>
-                  <mat-checkbox formControlName="policyMinors" color="primary">
-                    <strong>Minors:</strong> Must be accompanied by a responsible adult at all times.
-                  </mat-checkbox>
-                  <mat-checkbox formControlName="policyParking" color="primary">
-                    <strong>Parking:</strong> Limited parking is available on a first-come, first-served basis.
-                  </mat-checkbox>
-                  <mat-checkbox formControlName="policySafe" color="primary">
-                    <strong>Valuables:</strong> Hotel is not liable for loss or theft. A digital safe is provided in the room.
-                  </mat-checkbox>
-                  <mat-checkbox formControlName="policyForceMajeure" color="primary">
-                    <strong>Force Majeure:</strong> The hotel shall not be held responsible for events beyond its control.
-                  </mat-checkbox>
-                </div>
-              </mat-card-content>
-            </mat-card>
-
-            <!-- Data Privacy -->
-            <mat-card class="form-card policy-card">
-              <mat-card-content>
-                <div class="section-title policy-title">
-                  <mat-icon>shield</mat-icon>
-                  <h3>Data Privacy Consent</h3>
-                </div>
-                <div class="policy-list">
-                  <mat-checkbox formControlName="policyDataPrivacy" color="primary">
-                    I give my consent for the collection and processing of my personal data in accordance
-                    with the Data Privacy Act of 2012 (RA 10173).
-                  </mat-checkbox>
-                </div>
-              </mat-card-content>
-            </mat-card>
-
-            <div class="step-nav">
-              <button mat-button matStepperPrevious class="back-btn">
-                <mat-icon>arrow_back</mat-icon> Back
-              </button>
-              <button mat-flat-button color="primary" matStepperNext [disabled]="policiesForm.invalid" class="nav-btn">
                 Next: Agreement & Signature <mat-icon iconPositionEnd>arrow_forward</mat-icon>
               </button>
             </div>
           </form>
         </mat-step>
 
-        <!-- ============ STEP 4: Agreement & Signatures ============ -->
+        <!-- ============ STEP 2: Agreement & Signatures ============ -->
         <mat-step label="Agreement & Signature">
           <form [formGroup]="signatureForm" class="step-content">
             <!-- Guest Agreement -->
@@ -730,17 +534,74 @@ import { RoomType, HotelSettings } from '../../../core/models';
       margin-bottom: 10px;
     }
 
-    /* ============ Edit Icon ============ */
-    .edit-icon {
-      cursor: pointer;
-      color: #999;
-      transition: color 0.2s;
+    /* ============ Details Display ============ */
+    .details-row {
+      display: grid;
+      gap: 20px;
+      margin-bottom: 20px;
     }
-    .edit-icon:hover {
+    .details-row.two-col {
+      grid-template-columns: 1fr 1fr;
+    }
+    .details-row.four-col {
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+    }
+    .detail-item {
+      background: #f8f9fa;
+      padding: 12px;
+      border-radius: 8px;
+      border-left: 3px solid #C41E3A;
+    }
+    .detail-item label {
+      display: block;
+      font-weight: 600;
+      color: #555;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    .detail-item p {
+      margin: 0;
       color: #1a1a2e;
+      font-size: 15px;
+      word-break: break-word;
+    }
+    .reservation-block {
+      background: #f5f5f5;
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 15px;
+      border-left: 4px solid #C41E3A;
+    }
+    .reservation-block h4 {
+      margin: 0 0 15px 0;
+      color: #1a1a2e;
+      font-size: 15px;
+      font-weight: 600;
+    }
+    .acknowledgment {
+      background: #e8f5e9;
+      padding: 15px;
+      border-radius: 8px;
+      border-left: 4px solid #28a745;
+      color: #2d5016;
+      margin: 0;
+      font-weight: 500;
     }
 
-    /* ============ Step Navigation ============ */
+    /* ============ Media Queries ============ */
+    @media (max-width: 768px) {
+      .details-row.two-col,
+      .details-row.four-col {
+        grid-template-columns: 1fr;
+      }
+    }
+    @media (min-width: 769px) and (max-width: 1024px) {
+      .details-row.four-col {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
     .step-nav {
       display: flex;
       justify-content: space-between;
@@ -935,10 +796,10 @@ export class GuestRegistrationComponent implements OnInit {
         guestPrintedName: `${preFilledData.firstName} ${preFilledData.lastName}`,
       });
 
-      // Skip to signature step (step 3, index 3)
+      // Skip to Agreement & Signature step (step 1, index 1)
       setTimeout(() => {
         if (this.stepper) {
-          this.stepper.selectedIndex = 3; // Jump to Agreement & Signature step
+          this.stepper.selectedIndex = 1; // Jump to Agreement & Signature step
         }
       }, 500);
     }
@@ -1004,7 +865,6 @@ export class GuestRegistrationComponent implements OnInit {
   isFormValid(): boolean {
     return (
       this.guestInfoForm.valid &&
-      this.policiesForm.valid &&
       this.signatureForm.valid &&
       !!this.guestSignatureData &&
       !!this.frontDeskSignatureData
@@ -1096,13 +956,141 @@ export class GuestRegistrationComponent implements OnInit {
       next: (guest) => {
         this.submitting.set(false);
         this.snackBar.open('Guest registered successfully!', 'Close', { duration: 3000 });
-        this.router.navigate(['/registration', guest.id]);
+        
+        // Generate PDF with all registration data
+        this.generateRegistrationPDF(payload, guest.id);
+        
+        // Navigate after small delay to allow PDF generation
+        setTimeout(() => {
+          this.router.navigate(['/registration', guest.id]);
+        }, 500);
       },
       error: (err) => {
         this.submitting.set(false);
         this.snackBar.open(err.error?.message ?? 'Registration failed', 'Close', { duration: 5000 });
       },
     });
+  }
+
+  private generateRegistrationPDF(data: any, guestId: string): void {
+    try {
+      const timestamp = new Date().toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: '2-digit', 
+        day: '2-digit' 
+      }).replace(/\//g, '-');
+
+      const htmlContent = `
+        <div style="font-family: Arial, sans-serif; padding: 20px; line-height: 1.6;">
+          <!-- Header -->
+          <div style="text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 15px;">
+            <h1 style="margin: 0; color: #C41E3A;">KEKEHYU HOTEL</h1>
+            <p style="margin: 5px 0; color: #666;">Guest Registration Form</p>
+            <p style="margin: 5px 0; font-size: 12px; color: #999;">Registration ID: ${guestId}</p>
+          </div>
+
+          <!-- Guest Information -->
+          <div style="margin-bottom: 25px;">
+            <h3 style="color: #1a1a2e; border-bottom: 1px solid #C41E3A; padding-bottom: 8px;">Guest Information</h3>
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="width: 50%; padding: 8px 0;"><strong>First Name:</strong> ${data.firstName}</td>
+                <td style="width: 50%; padding: 8px 0;"><strong>Last Name:</strong> ${data.lastName}</td>
+              </tr>
+              <tr>
+                <td style="width: 50%; padding: 8px 0;"><strong>Email:</strong> ${data.email}</td>
+                <td style="width: 50%; padding: 8px 0;"><strong>Phone:</strong> ${data.phoneNumber}</td>
+              </tr>
+              <tr>
+                <td style="width: 50%; padding: 8px 0;"><strong>Country:</strong> ${data.country}</td>
+                <td style="width: 50%; padding: 8px 0;"><strong>Vehicle Plate:</strong> ${data.vehiclePlateNo}</td>
+              </tr>
+            </table>
+          </div>
+
+          <!-- Room Reservations -->
+          <div style="margin-bottom: 25px;">
+            <h3 style="color: #1a1a2e; border-bottom: 1px solid #C41E3A; padding-bottom: 8px;">Room Details</h3>
+            ${data.reservations.map((res: any, idx: number) => `
+              <div style="margin-bottom: 15px; padding: 10px; background: #f5f5f5; border-radius: 5px;">
+                <p style="margin: 0 0 10px 0; font-weight: bold;">Room ${idx + 1}</p>
+                <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                  <tr>
+                    <td style="padding: 5px 0;"><strong>Room Number:</strong> ${res.roomNumber}</td>
+                    <td style="padding: 5px 0;"><strong>Check-in:</strong> ${res.checkInDate}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 5px 0;"><strong>Room Type:</strong> ${res.roomTypeId}</td>
+                    <td style="padding: 5px 0;"><strong>Check-out:</strong> ${res.checkOutDate}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 5px 0;"><strong>Check-in Time:</strong> ${res.checkInTime}</td>
+                    <td style="padding: 5px 0;"><strong>Check-out Time:</strong> ${res.checkOutTime}</td>
+                  </tr>
+                </table>
+                ${res.accompanyingGuests && res.accompanyingGuests.length > 0 ? `
+                  <p style="margin: 10px 0 5px 0; font-weight: bold; font-size: 13px;">Accompanying Guests:</p>
+                  <ul style="margin: 5px 0; padding-left: 20px; font-size: 13px;">
+                    ${res.accompanyingGuests.map((guest: any) => `
+                      <li>${guest.firstName} ${guest.lastName}</li>
+                    `).join('')}
+                  </ul>
+                ` : ''}
+              </div>
+            `).join('')}
+          </div>
+
+          <!-- Policies Accepted -->
+          <div style="margin-bottom: 25px;">
+            <h3 style="color: #1a1a2e; border-bottom: 1px solid #C41E3A; padding-bottom: 8px;">Policies & Agreement</h3>
+            <div style="font-size: 13px;">
+              <p><strong>✓ All Hotel Policies Acknowledged</strong></p>
+              <ul style="margin: 10px 0; padding-left: 20px;">
+                <li>Smoking Policy: ${data.agreement.policySmoking ? 'Accepted' : 'Not Accepted'}</li>
+                <li>Corkage Policy: ${data.agreement.policyCorkage ? 'Accepted' : 'Not Accepted'}</li>
+                <li>No Pets Policy: ${data.agreement.policyNoPets ? 'Accepted' : 'Not Accepted'}</li>
+                <li>Data Privacy Consent: ${data.agreement.policyDataPrivacy ? 'Accepted' : 'Not Accepted'}</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Signatures & Front Desk -->
+          <div style="margin-bottom: 25px;">
+            <h3 style="color: #1a1a2e; border-bottom: 1px solid #C41E3A; padding-bottom: 8px;">Agreement & Signature</h3>
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="width: 50%; padding: 8px 0;"><strong>Guest Printed Name:</strong> ${data.agreement.guestPrintedName}</td>
+                <td style="width: 50%; padding: 8px 0;"><strong>Date:</strong> ${data.agreement.signatureDate}</td>
+              </tr>
+              <tr>
+                <td style="width: 50%; padding: 8px 0;"><strong>Processed By:</strong> ${data.agreement.processedByName}</td>
+                <td style="width: 50%; padding: 8px 0;"><strong>Remarks:</strong> ${data.agreement.remarks || 'None'}</td>
+              </tr>
+            </table>
+          </div>
+
+          <!-- Footer -->
+          <div style="text-align: center; margin-top: 30px; padding-top: 15px; border-top: 1px solid #ddd; font-size: 12px; color: #999;">
+            <p>Document Generated: ${new Date().toLocaleString()}</p>
+            <p>This is an automatically generated registration confirmation.</p>
+          </div>
+        </div>
+      `;
+
+      const opt = {
+        margin: 10,
+        filename: `Registration_${guestId}_${timestamp}.pdf`,
+        image: { type: 'png' as const },
+        html2canvas: { scale: 2 },
+        jsPDF: { orientation: 'portrait' as const, unit: 'mm' as const, format: 'a4' as const }
+      };
+
+      html2pdf().set(opt).from(htmlContent).save();
+      console.log('✅ Registration PDF generated and downloaded');
+    } catch (error) {
+      console.error('Failed to generate PDF:', error);
+      this.snackBar.open('⚠️ PDF generation failed', 'Close', { duration: 3000 });
+    }
   }
 
   private formatDate(date: any): string {

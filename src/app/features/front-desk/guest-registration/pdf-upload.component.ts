@@ -548,7 +548,12 @@ export class PdfUploadComponent implements OnInit {
       const data = await this.pdfExtractor.extractGuestDataFromPdf(file);
       this.extractedData.set(data);
       this.populateForm(data);
-      this.snackBar.open('✅ PDF processed successfully', 'Close', { duration: 3000 });
+      this.snackBar.open('✅ PDF processed successfully - proceeding to signature...', 'Close', { duration: 2000 });
+      
+      // Auto-navigate to signature/agreement step after brief delay
+      setTimeout(() => {
+        this.confirmAndProceed();
+      }, 1500);
     } catch (error) {
       console.error('File processing error:', error);
       this.snackBar.open('❌ Failed to process PDF', 'Close', { duration: 3000 });
