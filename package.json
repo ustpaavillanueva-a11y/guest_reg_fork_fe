@@ -7,7 +7,8 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "serve:ssr:guest_registration": "node dist/guest_registration/server/server.mjs"
+    "serve:ssr:guest_registration": "node dist/guest_registration/server/server.mjs",
+    "postinstall": "node copy-pdf-worker.js"
   },
   "private": true,
   "packageManager": "npm@11.12.1",
@@ -28,6 +29,7 @@
     "express": "^5.1.0",
     "html2pdf.js": "^0.14.0",
     "ng2-charts": "^10.0.0",
+    "pdfjs-dist": "^4.5.378",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
   },

@@ -1,7 +1,7 @@
-import { Component, signal, OnInit, inject } from '@angular/core';
+import { Component, signal, OnInit, inject, ViewChild } from '@angular/core';
 import { ReactiveFormsModule, FormBuilder, FormArray, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
-import { MatStepperModule } from '@angular/material/stepper';
+import { MatStepperModule, MatStepper } from '@angular/material/stepper';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
@@ -49,6 +49,10 @@ import { RoomType, HotelSettings } from '../../../core/models';
             <h1>Guest Registration</h1>
             <p>{{ today }}</p>
           </div>
+          <button mat-stroked-button (click)="navigateToPdfUpload()" class="pdf-upload-btn">
+            <mat-icon>upload_file</mat-icon>
+            Register with PDF
+          </button>
         </div>
       </div>
 
@@ -462,7 +466,16 @@ import { RoomType, HotelSettings } from '../../../core/models';
     .header-content {
       display: flex;
       align-items: center;
+      justify-content: space-between;
       gap: 16px;
+    }
+    .pdf-upload-btn {
+      color: white;
+      border-color: white;
+      flex-shrink: 0;
+    }
+    .pdf-upload-btn:hover {
+      background-color: rgba(255, 255, 255, 0.1);
     }
     .header-icon {
       font-size: 40px;
@@ -834,6 +847,8 @@ export class GuestRegistrationComponent implements OnInit {
   private snackBar = inject(MatSnackBar);
   private router = inject(Router);
 
+  @ViewChild('stepper') stepper!: MatStepper;
+
   constructor() {}
 
   ngOnInit(): void {
@@ -849,6 +864,84 @@ export class GuestRegistrationComponent implements OnInit {
         processedByName: `${user.firstName} ${user.lastName}`,
       });
     }
+
+    // Check if data was passed from PDF Upload
+    const navigation = this.router.getCurrentNavigation();
+    const state = navigation?.extras.state;
+    
+    if (state?.['fromPdfUpload'] && state?.['preFilledData']) {
+      const preFilledData = state['preFilledData'];
+      
+      // Auto-fill guest info form
+      const guestInfo = {
+        firstName: preFilledData.firstName || '',
+        lastName: preFilledData.lastName || '',
+        middleName: preFilledData.middleName || '',
+        phoneNumber: preFilledData.phoneNumber || '',
+        email: preFilledData.email || '',
+        country: preFilledData.country || 'Philippines',
+        vehiclePlateNo: preFilledData.vehiclePlateNo || '',
+        validIdPresented: preFilledData.validIdPresented || false,
+      };
+      this.guestInfoForm.patchValue(guestInfo);
+
+      // Auto-fill reservation form
+      const firstReservation = {
+        roomTypeId: preFilledData.roomType || '', 
+        roomNumber: preFilledData.roomNumber || '',
+        checkInDate: preFilledData.checkInDate ? new Date(preFilledData.checkInDate) : '',
+        checkOutDate: preFilledData.checkOutDate ? new Date(preFilledData.checkOutDate) : '',
+        checkInTime: preFilledData.checkInTime || '14:00',
+        checkOutTime: preFilledData.checkOutTime || '11:00',
+        accompanyingGuests: preFilledData.accompanyingGuests || [],
+      };
+      
+      this.reservations.at(0).patchValue(firstReservation);
+      
+      // If there are accompanying guests, add them
+      if (preFilledData.accompanyingGuests && preFilledData.accompanyingGuests.length > 0) {
+        const aguestsForm = this.getAccompanyingGuests(0);
+        preFilledData.accompanyingGuests.forEach((guest: any) => {
+          aguestsForm.push(
+            this.fb.group({
+              firstName: [guest.firstName || '', Validators.required],
+              lastName: [guest.lastName || '', Validators.required],
+              middleName: [guest.middleName || ''],
+              validIdPresented: [guest.validIdPresented || false],
+              signature: [''],
+            })
+          );
+        });
+      }
+
+      // Auto-check all policies (user can modify if needed)
+      const allPoliciesTrue = {
+        policyHousekeeping1: true,
+        policyHousekeeping2: true,
+        policySmoking: true,
+        policyCorkage: true,
+        policyNoPets: true,
+        policyNegligence: true,
+        policyMinors: true,
+        policyParking: true,
+        policySafe: true,
+        policyForceMajeure: true,
+        policyDataPrivacy: true,
+      };
+      this.policiesForm.patchValue(allPoliciesTrue);
+
+      // Set guest printed name
+      this.signatureForm.patchValue({
+        guestPrintedName: `${preFilledData.firstName} ${preFilledData.lastName}`,
+      });
+
+      // Skip to signature step (step 3, index 3)
+      setTimeout(() => {
+        if (this.stepper) {
+          this.stepper.selectedIndex = 3; // Jump to Agreement & Signature step
+        }
+      }, 500);
+    }
   }
 
   get reservations(): FormArray {
@@ -857,6 +950,10 @@ export class GuestRegistrationComponent implements OnInit {
 
   getAccompanyingGuests(reservationIndex: number): FormArray {
     return this.reservations.at(reservationIndex).get('accompanyingGuests') as FormArray;
+  }
+
+  navigateToPdfUpload(): void {
+    this.router.navigate(['guest-registration/pdf-upload']);
   }
 
   createReservationGroup() {

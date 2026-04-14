@@ -39,6 +39,16 @@ export const routes: Routes = [
           import('./features/front-desk/guest-registration/guest-registration.component').then((m) => m.GuestRegistrationComponent),
       },
       {
+        path: 'guest-registration/pdf-upload',
+        loadComponent: () =>
+          import('./features/front-desk/guest-registration/pdf-upload.component').then((m) => m.PdfUploadComponent),
+      },
+      {
+        path: 'guest-registration/signature',
+        loadComponent: () =>
+          import('./features/front-desk/guest-registration/guest-registration.component').then((m) => m.GuestRegistrationComponent),
+      },
+      {
         path: 'my-registrations',
         loadComponent: () =>
           import('./features/front-desk/my-registrations/my-registrations.component').then((m) => m.MyRegistrationsComponent),
@@ -68,6 +78,22 @@ export const routes: Routes = [
       // Guest Registration - Super Admin
       {
         path: 'guest-registration',
+        canActivate: [roleGuard('super_admin')],
+        loadComponent: () =>
+          import('./features/front-desk/guest-registration/guest-registration.component').then((m) => m.GuestRegistrationComponent),
+      },
+
+      // PDF Upload - Super Admin
+      {
+        path: 'guest-registration/pdf-upload',
+        canActivate: [roleGuard('super_admin')],
+        loadComponent: () =>
+          import('./features/front-desk/guest-registration/pdf-upload.component').then((m) => m.PdfUploadComponent),
+      },
+
+      // Guest Registration Signature - Super Admin
+      {
+        path: 'guest-registration/signature',
         canActivate: [roleGuard('super_admin')],
         loadComponent: () =>
           import('./features/front-desk/guest-registration/guest-registration.component').then((m) => m.GuestRegistrationComponent),
