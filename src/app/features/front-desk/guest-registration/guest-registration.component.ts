@@ -1,7 +1,8 @@
 import { Component, signal, OnInit, inject, ViewChild } from '@angular/core';
 import { ReactiveFormsModule, FormBuilder, FormArray, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { DatePipe } from '@angular/common';
+import { catchError, of } from 'rxjs';
 import { MatStepperModule, MatStepper } from '@angular/material/stepper';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -707,101 +708,122 @@ export class GuestRegistrationComponent implements OnInit {
   private authService = inject(AuthService);
   private snackBar = inject(MatSnackBar);
   private router = inject(Router);
+  private activatedRoute = inject(ActivatedRoute);
 
   @ViewChild('stepper') stepper!: MatStepper;
 
   constructor() {}
 
   ngOnInit(): void {
-    this.roomTypeService.getActive().subscribe((types) => this.roomTypes.set(types));
+    try {
+      // Load room types with error handling to prevent app instability
+      this.roomTypeService.getActive()
+        .pipe(
+          catchError((error) => {
+            console.error('Failed to load room types:', error);
+            return of([]);
+          })
+        )
+        .subscribe((types) => this.roomTypes.set(types));
 
-    this.hotelSettingsService.getSettings().subscribe((settings) => {
-      this.hotelSettings.set(settings);
-    });
+      // Load hotel settings with error handling to prevent app instability
+      this.hotelSettingsService.getSettings()
+        .pipe(
+          catchError((error) => {
+            console.error('Failed to load hotel settings:', error);
+            return of(null);
+          })
+        )
+        .subscribe((settings) => {
+          if (settings) this.hotelSettings.set(settings);
+        });
 
-    const user = this.authService.user();
-    if (user) {
-      this.signatureForm.patchValue({
-        processedByName: `${user.firstName} ${user.lastName}`,
-      });
-    }
-
-    // Check if data was passed from PDF Upload
-    const navigation = this.router.getCurrentNavigation();
-    const state = navigation?.extras.state;
-    
-    if (state?.['fromPdfUpload'] && state?.['preFilledData']) {
-      const preFilledData = state['preFilledData'];
-      
-      // Auto-fill guest info form
-      const guestInfo = {
-        firstName: preFilledData.firstName || '',
-        lastName: preFilledData.lastName || '',
-        middleName: preFilledData.middleName || '',
-        phoneNumber: preFilledData.phoneNumber || '',
-        email: preFilledData.email || '',
-        country: preFilledData.country || 'Philippines',
-        vehiclePlateNo: preFilledData.vehiclePlateNo || '',
-        validIdPresented: preFilledData.validIdPresented || false,
-      };
-      this.guestInfoForm.patchValue(guestInfo);
-
-      // Auto-fill reservation form
-      const firstReservation = {
-        roomTypeId: preFilledData.roomType || '', 
-        roomNumber: preFilledData.roomNumber || '',
-        checkInDate: preFilledData.checkInDate ? new Date(preFilledData.checkInDate) : '',
-        checkOutDate: preFilledData.checkOutDate ? new Date(preFilledData.checkOutDate) : '',
-        checkInTime: preFilledData.checkInTime || '14:00',
-        checkOutTime: preFilledData.checkOutTime || '11:00',
-        accompanyingGuests: preFilledData.accompanyingGuests || [],
-      };
-      
-      this.reservations.at(0).patchValue(firstReservation);
-      
-      // If there are accompanying guests, add them
-      if (preFilledData.accompanyingGuests && preFilledData.accompanyingGuests.length > 0) {
-        const aguestsForm = this.getAccompanyingGuests(0);
-        preFilledData.accompanyingGuests.forEach((guest: any) => {
-          aguestsForm.push(
-            this.fb.group({
-              firstName: [guest.firstName || '', Validators.required],
-              lastName: [guest.lastName || '', Validators.required],
-              middleName: [guest.middleName || ''],
-              validIdPresented: [guest.validIdPresented || false],
-              signature: [''],
-            })
-          );
+      const user = this.authService.user();
+      if (user) {
+        this.signatureForm.patchValue({
+          processedByName: `${user.firstName} ${user.lastName}`,
         });
       }
 
-      // Auto-check all policies (user can modify if needed)
-      const allPoliciesTrue = {
-        policyHousekeeping1: true,
-        policyHousekeeping2: true,
-        policySmoking: true,
-        policyCorkage: true,
-        policyNoPets: true,
-        policyNegligence: true,
-        policyMinors: true,
-        policyParking: true,
-        policySafe: true,
-        policyForceMajeure: true,
-        policyDataPrivacy: true,
-      };
-      this.policiesForm.patchValue(allPoliciesTrue);
+      // Check if data was passed from PDF Upload using window.history.state (safest approach)
+      const state = (window as any).history.state || {};
+      
+      if (state?.['fromPdfUpload'] && state?.['preFilledData']) {
+        const preFilledData = state['preFilledData'];
+        
+        // Auto-fill guest info form
+        const guestInfo = {
+          firstName: preFilledData.firstName || '',
+          lastName: preFilledData.lastName || '',
+          middleName: preFilledData.middleName || '',
+          phoneNumber: preFilledData.phoneNumber || '',
+          email: preFilledData.email || '',
+          country: preFilledData.country || 'Philippines',
+          vehiclePlateNo: preFilledData.vehiclePlateNo || '',
+          validIdPresented: preFilledData.validIdPresented || false,
+        };
+        this.guestInfoForm.patchValue(guestInfo);
 
-      // Set guest printed name
-      this.signatureForm.patchValue({
-        guestPrintedName: `${preFilledData.firstName} ${preFilledData.lastName}`,
-      });
-
-      // Skip to Agreement & Signature step (step 1, index 1)
-      setTimeout(() => {
-        if (this.stepper) {
-          this.stepper.selectedIndex = 1; // Jump to Agreement & Signature step
+        // Auto-fill reservation form
+        const firstReservation = {
+          roomTypeId: preFilledData.roomType || '', 
+          roomNumber: preFilledData.roomNumber || '',
+          checkInDate: preFilledData.checkInDate ? new Date(preFilledData.checkInDate) : '',
+          checkOutDate: preFilledData.checkOutDate ? new Date(preFilledData.checkOutDate) : '',
+          checkInTime: preFilledData.checkInTime || '14:00',
+          checkOutTime: preFilledData.checkOutTime || '11:00',
+          accompanyingGuests: preFilledData.accompanyingGuests || [],
+        };
+        
+        this.reservations.at(0).patchValue(firstReservation);
+        
+        // If there are accompanying guests, add them
+        if (preFilledData.accompanyingGuests && preFilledData.accompanyingGuests.length > 0) {
+          const aguestsForm = this.getAccompanyingGuests(0);
+          preFilledData.accompanyingGuests.forEach((guest: any) => {
+            aguestsForm.push(
+              this.fb.group({
+                firstName: [guest.firstName || '', Validators.required],
+                lastName: [guest.lastName || '', Validators.required],
+                middleName: [guest.middleName || ''],
+                validIdPresented: [guest.validIdPresented || false],
+                signature: [''],
+              })
+            );
+          });
         }
-      }, 500);
+
+        // Auto-check all policies (user can modify if needed)
+        const allPoliciesTrue = {
+          policyHousekeeping1: true,
+          policyHousekeeping2: true,
+          policySmoking: true,
+          policyCorkage: true,
+          policyNoPets: true,
+          policyNegligence: true,
+          policyMinors: true,
+          policyParking: true,
+          policySafe: true,
+          policyForceMajeure: true,
+          policyDataPrivacy: true,
+        };
+        this.policiesForm.patchValue(allPoliciesTrue);
+
+        // Set guest printed name
+        this.signatureForm.patchValue({
+          guestPrintedName: `${preFilledData.firstName} ${preFilledData.lastName}`,
+        });
+
+        // Skip to Agreement & Signature step (step 1, index 1) - use safer setTimeout to ensure stepper is ready
+        setTimeout(() => {
+          if (this.stepper) {
+            this.stepper.selectedIndex = 1; // Jump to Agreement & Signature step
+          }
+        }, 100);
+      }
+    } catch (error) {
+      console.error('Error in ngOnInit:', error);
+      this.snackBar.open('An error occurred during initialization', 'Close', { duration: 3000 });
     }
   }
 

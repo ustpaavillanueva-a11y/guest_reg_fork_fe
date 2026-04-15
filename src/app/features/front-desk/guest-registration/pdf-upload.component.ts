@@ -595,9 +595,9 @@ export class PdfUploadComponent implements OnInit {
       return;
     }
 
-    // Store the extracted data in router history state
+    // Store the extracted data in router history state and navigate to main guest registration
     this.router.navigate(
-      ['guest-registration/signature'],
+      ['/guest-registration'],
       {
         state: {
           preFilledData: this.editForm.value,
