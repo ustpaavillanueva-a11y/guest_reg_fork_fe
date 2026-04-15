@@ -108,17 +108,32 @@ export class PdfExtractorService {
         data.phoneNumber = phoneMatch[1].trim().replace(/\s+/g, ' ');
       }
 
-      // Extract Email
-      const emailMatch = text.match(/Email\s+([\w.-]+@[\w.-]+\.\w+)/i);
-      data.email = emailMatch ? emailMatch[1].trim() : '';
+      // Extract Email - find guest email in guest info section, skip hotel email
+      // Strategy: find all emails, filter out hotel's email, take the remaining one
+      const allEmailsMatch = text.match(/([\w.-]+@[\w.-]+\.\w+)/gi);
+      if (allEmailsMatch && allEmailsMatch.length > 0) {
+        // Filter out the hotel's email
+        const guestEmail = allEmailsMatch.find(email => !email.toLowerCase().includes('kekehyuhotel'));
+        if (guestEmail) {
+          data.email = guestEmail.trim();
+        }
+        // If only hotel email exists, leave email blank
+      }
 
-      // Extract Country
-      const countryMatch = text.match(/Country\s+([A-Za-z\s]+?)(?=$|Check|Room)/i);
-      data.country = countryMatch ? countryMatch[1].trim() : '';
+      // Extract Country - default to Philippines if not found
+      const countryMatch = text.match(/Country\s+([A-Za-z\s]+?)(?=$|Check|Room|Philippines)/i);
+      data.country = countryMatch ? countryMatch[1].trim() : 'Philippines';
 
-      // Extract Vehicle Plate
-      const vehicleMatch = text.match(/VEHICLE PLATE NO\.\s*:\s*([^\n]*)/i);
-      data.vehiclePlateNo = vehicleMatch ? vehicleMatch[1].trim() : '';
+      // Extract Vehicle Plate - be strict, only accept if it looks valid
+      const vehicleMatch = text.match(/VEHICLE PLATE NO\.\s*:\s*([^\n\r]*)/i);
+      if (vehicleMatch) {
+        const vehicleText = vehicleMatch[1].trim();
+        // Only set if it's not empty and doesn't contain policy text
+        if (vehicleText && vehicleText.length < 20 && !vehicleText.toLowerCase().includes('policy')) {
+          data.vehiclePlateNo = vehicleText;
+        }
+        // Otherwise leave it blank (empty string)
+      }
 
       // Extract Check-in Date (format: MM/DD/YYYY -> ISO: YYYY-MM-DD)
       const checkInMatch = text.match(/Check in Date\s+(\d{2}\/\d{2}\/\d{4})/i);

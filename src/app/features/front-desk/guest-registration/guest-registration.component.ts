@@ -133,7 +133,7 @@ import { RoomType, HotelSettings } from '../../../core/models';
                       </div>
                       <div class="detail-item">
                         <label>Room Type</label>
-                        <p>{{ reservation.get('roomTypeId')?.value }}</p>
+                        <p>{{ reservation.get('roomType')?.value }}</p>
                       </div>
                     </div>
                   </div>
@@ -766,7 +766,7 @@ export class GuestRegistrationComponent implements OnInit {
 
         // Auto-fill reservation form
         const firstReservation = {
-          roomTypeId: preFilledData.roomType || '', 
+          roomType: preFilledData.roomType || '', 
           roomNumber: preFilledData.roomNumber || '',
           checkInDate: preFilledData.checkInDate ? new Date(preFilledData.checkInDate) : '',
           checkOutDate: preFilledData.checkOutDate ? new Date(preFilledData.checkOutDate) : '',
@@ -841,7 +841,7 @@ export class GuestRegistrationComponent implements OnInit {
 
   createReservationGroup() {
     return this.fb.group({
-      roomTypeId: ['', Validators.required],
+      roomType: ['', Validators.required],
       roomNumber: ['', Validators.required],
       checkInDate: ['', Validators.required],
       checkOutDate: [''],
@@ -951,8 +951,17 @@ export class GuestRegistrationComponent implements OnInit {
     this.submitting.set(true);
 
     const guestInfo = this.guestInfoForm.getRawValue();
+    
+    // Remove empty email field from guest info
+    const { email, ...guestInfoWithoutEmail } = guestInfo;
+    const guestInfoClean = {
+      ...guestInfoWithoutEmail,
+      ...(email && email.trim() ? { email: email.trim() } : {}), // Only include if not empty
+    };
+    
     const reservations = this.reservations.getRawValue().map((r: any) => ({
       ...r,
+      roomType: r.roomType || '', // Send room type name as string - backend handles conversion
       reservationNumber: this.generateReservationNumber(),
       checkInDate: this.formatDate(r.checkInDate),
       checkOutDate: r.checkOutDate ? this.formatDate(r.checkOutDate) : undefined,
@@ -961,7 +970,7 @@ export class GuestRegistrationComponent implements OnInit {
     const signature = this.signatureForm.getRawValue();
 
     const payload = {
-      ...guestInfo,
+      ...guestInfoClean,
       reservations,
       agreement: {
         ...policies,

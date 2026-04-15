@@ -563,6 +563,16 @@ export class PdfUploadComponent implements OnInit {
   }
 
   private populateForm(data: ExtractedGuestData): void {
+    // Convert room type name to ID if available
+    let roomTypeId = '';
+    if (data.roomType && this.roomTypes.length > 0) {
+      // Match room type name from PDF to room type UUID from backend
+      const matchedRoomType = this.roomTypes.find(rt => 
+        rt.name.toUpperCase().trim() === data.roomType?.toUpperCase().trim()
+      );
+      roomTypeId = matchedRoomType ? matchedRoomType.id : '';
+    }
+
     this.editForm.patchValue({
       firstName: data.firstName,
       lastName: data.lastName,
@@ -574,7 +584,7 @@ export class PdfUploadComponent implements OnInit {
       validIdPresented: data.validIdPresented,
       reservationNumber: data.reservationNumber,
       roomNumber: data.roomNumber,
-      roomType: data.roomType,
+      roomType: roomTypeId, // Send UUID instead of name
       checkInDate: data.checkInDate,
       checkOutDate: data.checkOutDate,
       checkInTime: data.checkInTime || '14:00',
