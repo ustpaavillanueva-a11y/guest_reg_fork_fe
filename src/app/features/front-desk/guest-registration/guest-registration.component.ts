@@ -125,11 +125,19 @@ import { RoomType, HotelSettings } from '../../../core/models';
                       </div>
                       <div class="detail-item">
                         <label>Check-in</label>
-                        <p>{{ reservation.get('checkInDate')?.value | date:'MMM dd, yyyy' }}</p>
+                        <p>@if (reservation.get('checkInDate')?.value) {
+                          {{ reservation.get('checkInDate')?.value | date:'MMM dd, yyyy' }}
+                        } @else {
+                          -
+                        }</p>
                       </div>
                       <div class="detail-item">
                         <label>Check-out</label>
-                        <p>{{ reservation.get('checkOutDate')?.value | date:'MMM dd, yyyy' }}</p>
+                        <p>@if (reservation.get('checkOutDate')?.value) {
+                          {{ reservation.get('checkOutDate')?.value | date:'MMM dd, yyyy' }}
+                        } @else {
+                          -
+                        }</p>
                       </div>
                       <div class="detail-item">
                         <label>Room Type</label>
@@ -672,7 +680,7 @@ export class GuestRegistrationComponent implements OnInit {
     lastName: ['', Validators.required],
     middleName: [''],
     phoneNumber: [''],
-    email: [''],
+    email: ['reservations.kekehyuhotel@gmail.com'],
     country: ['Philippines'],
     vehiclePlateNo: [''],
     validIdPresented: [false],
@@ -751,13 +759,20 @@ export class GuestRegistrationComponent implements OnInit {
       if (state?.['fromPdfUpload'] && state?.['preFilledData']) {
         const preFilledData = state['preFilledData'];
         
+        // Debug: Log received data
+        console.log('=== PREFILL DATA RECEIVED ===');
+        console.log('Phone Number:', preFilledData.phoneNumber);
+        console.log('Room Type:', preFilledData.roomType);
+        console.log('Room Number:', preFilledData.roomNumber);
+        console.log('Full preFilledData:', preFilledData);
+        
         // Auto-fill guest info form
         const guestInfo = {
           firstName: preFilledData.firstName || '',
           lastName: preFilledData.lastName || '',
           middleName: preFilledData.middleName || '',
           phoneNumber: preFilledData.phoneNumber || '',
-          email: preFilledData.email || '',
+          email: preFilledData.email || 'reservations.kekehyuhotel@gmail.com',
           country: preFilledData.country || 'Philippines',
           vehiclePlateNo: preFilledData.vehiclePlateNo || '',
           validIdPresented: preFilledData.validIdPresented || false,
@@ -768,13 +783,14 @@ export class GuestRegistrationComponent implements OnInit {
         const firstReservation = {
           roomType: preFilledData.roomType || '', 
           roomNumber: preFilledData.roomNumber || '',
-          checkInDate: preFilledData.checkInDate ? new Date(preFilledData.checkInDate) : '',
-          checkOutDate: preFilledData.checkOutDate ? new Date(preFilledData.checkOutDate) : '',
+          checkInDate: this.parseDate(preFilledData.checkInDate),
+          checkOutDate: this.parseDate(preFilledData.checkOutDate),
           checkInTime: preFilledData.checkInTime || '14:00',
           checkOutTime: preFilledData.checkOutTime || '11:00',
           accompanyingGuests: preFilledData.accompanyingGuests || [],
         };
         
+        console.log('Reservation to patch:', firstReservation);
         this.reservations.at(0).patchValue(firstReservation);
         
         // If there are accompanying guests, add them
@@ -1051,7 +1067,7 @@ export class GuestRegistrationComponent implements OnInit {
                     <td style="padding: 5px 0;"><strong>Check-in:</strong> ${res.checkInDate}</td>
                   </tr>
                   <tr>
-                    <td style="padding: 5px 0;"><strong>Room Type:</strong> ${res.roomTypeId}</td>
+                    <td style="padding: 5px 0;"><strong>Room Type:</strong> ${res.roomType}</td>
                     <td style="padding: 5px 0;"><strong>Check-out:</strong> ${res.checkOutDate}</td>
                   </tr>
                   <tr>
@@ -1127,6 +1143,18 @@ export class GuestRegistrationComponent implements OnInit {
   private formatDate(date: any): string {
     const d = new Date(date);
     return d.toISOString().split('T')[0];
+  }
+
+  private parseDate(dateStr: string | undefined | null): Date | null {
+    if (!dateStr) return null;
+    
+    // Try to parse ISO format (YYYY-MM-DD) from PDF extractor
+    const date = new Date(dateStr);
+    if (!isNaN(date.getTime())) {
+      return date;
+    }
+    
+    return null;
   }
 
   private resetForm(): void {

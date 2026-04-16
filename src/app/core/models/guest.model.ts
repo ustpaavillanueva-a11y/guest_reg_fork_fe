@@ -23,7 +23,7 @@ export interface Reservation {
   id: string;
   reservationNumber: string;
   roomNumber: string;
-  roomType?: RoomType;
+  roomType?: RoomType | string;  // Can be object (from DB relation) or string (direct name)
   checkInDate: Date;
   checkOutDate?: Date;
   checkInTime?: string;
@@ -81,7 +81,7 @@ export interface CreateGuestRequest {
 export interface CreateReservationRequest {
   reservationNumber: string;
   roomNumber: string;
-  roomTypeId: string;
+  roomType: string;  // Room type name as string (backend handles conversion)
   checkInDate: string;
   checkOutDate?: string;
   checkInTime?: string;

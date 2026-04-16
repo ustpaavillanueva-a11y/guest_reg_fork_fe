@@ -1,4 +1,4 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
@@ -13,8 +13,6 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatListModule } from '@angular/material/list';
 import { PdfExtractorService, ExtractedGuestData } from '../../../core/services/pdf-extractor.service';
-import { RoomTypeService } from '../../../core/services/room-type.service';
-import { RoomType } from '../../../core/models';
 
 @Component({
   selector: 'app-pdf-upload',
@@ -184,11 +182,7 @@ import { RoomType } from '../../../core/models';
 
                   <mat-form-field appearance="outline">
                     <mat-label>Room Type</mat-label>
-                    <mat-select formControlName="roomType">
-                      @for (roomType of roomTypes; track roomType.id) {
-                        <mat-option [value]="roomType.id">{{ roomType.name }}</mat-option>
-                      }
-                    </mat-select>
+                    <input matInput formControlName="roomType" placeholder="e.g., JUNIOR EXECUTIVE (KING BED)" />
                   </mat-form-field>
                 </div>
 
@@ -456,26 +450,20 @@ import { RoomType } from '../../../core/models';
     }
   `,
 })
-export class PdfUploadComponent implements OnInit {
+export class PdfUploadComponent {
   extractedData = signal<ExtractedGuestData | null>(null);
   editForm!: FormGroup;
   isLoading = signal(false);
   isDragging = signal(false);
   isConfirmed = signal(false);
-  roomTypes: RoomType[] = [];
 
   constructor(
     private pdfExtractor: PdfExtractorService,
-    private roomTypeService: RoomTypeService,
     private formBuilder: FormBuilder,
     private router: Router,
     private snackBar: MatSnackBar
   ) {
     this.initializeForm();
-  }
-
-  ngOnInit(): void {
-    this.loadRoomTypes();
   }
 
   private initializeForm(): void {
@@ -496,18 +484,6 @@ export class PdfUploadComponent implements OnInit {
       checkInTime: ['14:00'],
       checkOutTime: ['11:00'],
       accompanyingGuests: [[]],
-    });
-  }
-
-  private loadRoomTypes(): void {
-    this.roomTypeService.getAll().subscribe({
-      next: (types) => {
-        this.roomTypes = types;
-      },
-      error: (err) => {
-        console.error('Failed to load room types:', err);
-        this.snackBar.open('Failed to load room types', 'Close', { duration: 3000 });
-      },
     });
   }
 
@@ -563,16 +539,13 @@ export class PdfUploadComponent implements OnInit {
   }
 
   private populateForm(data: ExtractedGuestData): void {
-    // Convert room type name to ID if available
-    let roomTypeId = '';
-    if (data.roomType && this.roomTypes.length > 0) {
-      // Match room type name from PDF to room type UUID from backend
-      const matchedRoomType = this.roomTypes.find(rt => 
-        rt.name.toUpperCase().trim() === data.roomType?.toUpperCase().trim()
-      );
-      roomTypeId = matchedRoomType ? matchedRoomType.id : '';
-    }
-
+    // Debug: Log extracted data before populating form
+    console.log('=== POPULATE FORM - EXTRACTED DATA ===');
+    console.log('Phone Number:', data.phoneNumber);
+    console.log('Room Type:', data.roomType);
+    console.log('Room Number:', data.roomNumber);
+    
+    // Use room type name directly (supports multiple room types, comma-separated)
     this.editForm.patchValue({
       firstName: data.firstName,
       lastName: data.lastName,
@@ -584,13 +557,16 @@ export class PdfUploadComponent implements OnInit {
       validIdPresented: data.validIdPresented,
       reservationNumber: data.reservationNumber,
       roomNumber: data.roomNumber,
-      roomType: roomTypeId, // Send UUID instead of name
+      roomType: data.roomType || '', // Keep as string name (supports multiple room types)
       checkInDate: data.checkInDate,
       checkOutDate: data.checkOutDate,
       checkInTime: data.checkInTime || '14:00',
       checkOutTime: data.checkOutTime || '11:00',
       accompanyingGuests: data.accompanyingGuests || [],
     });
+    
+    // Debug: Log form value after patching
+    console.log('Form value after patch:', this.editForm.value);
   }
 
   resetUpload(): void {
@@ -605,12 +581,20 @@ export class PdfUploadComponent implements OnInit {
       return;
     }
 
+    // Debug: Log the data being sent
+    const formData = this.editForm.value;
+    console.log('=== PDF UPLOAD - SENDING DATA ===');
+    console.log('Phone Number:', formData.phoneNumber);
+    console.log('Room Type:', formData.roomType);
+    console.log('Room Number:', formData.roomNumber);
+    console.log('Full form data:', formData);
+
     // Store the extracted data in router history state and navigate to main guest registration
     this.router.navigate(
       ['/guest-registration'],
       {
         state: {
-          preFilledData: this.editForm.value,
+          preFilledData: formData,
           fromPdfUpload: true,
         },
       }

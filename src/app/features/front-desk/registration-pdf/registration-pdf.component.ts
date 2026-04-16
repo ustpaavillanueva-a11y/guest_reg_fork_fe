@@ -82,7 +82,7 @@ import html2pdf from 'html2pdf.js';
               </div>
               <div class="info-cell">
                 <span class="label">Room Type</span>
-                <span class="value">{{ reservation.roomType?.name || '—' }}</span>
+                <span class="value">{{ getRoomTypeName(reservation.roomType) }}</span>
               </div>
               <div class="info-cell">
                 <span class="label">Room Number</span>
@@ -592,6 +592,16 @@ export class RegistrationPdfComponent implements OnInit {
 
     this.guestService.getById(id).subscribe({
       next: (guest) => {
+        // Debug: Log what the backend returns
+        console.log('=== REGISTRATION PDF - GUEST DATA FROM BACKEND ===');
+        console.log('Phone Number:', guest.phoneNumber);
+        console.log('Reservations:', guest.reservations);
+        if (guest.reservations && guest.reservations.length > 0) {
+          console.log('Room Type (raw):', guest.reservations[0].roomType);
+          console.log('Room Type typeof:', typeof guest.reservations[0].roomType);
+        }
+        console.log('Full guest data:', guest);
+        
         this.guest.set(guest);
         this.loading.set(false);
         
@@ -608,6 +618,16 @@ export class RegistrationPdfComponent implements OnInit {
 
   printPdf(): void {
     window.print();
+  }
+
+  // Helper to get room type name - handles both string and object formats
+  getRoomTypeName(roomType: any): string {
+    if (!roomType) return '—';
+    // If it's a string, return it directly
+    if (typeof roomType === 'string') return roomType;
+    // If it's an object with name property
+    if (roomType.name) return roomType.name;
+    return '—';
   }
 
   private generateAndSavePdf(guest: Guest): void {
@@ -639,25 +659,24 @@ export class RegistrationPdfComponent implements OnInit {
         // Upload to backend
         this.guestService.uploadPdf(guest.id, pdfFile).subscribe({
           next: (response) => {
-            // Save the returned URL to the database
+            // Save the returned URL to the database - send pdfPath at root level
             this.guestService.update(guest.id, {
-              agreement: {
-                ...guest.agreement,
-                pdfPath: response.pdfUrl
-              }
-            }).subscribe({
+              pdfPath: response.pdfUrl
+            } as any).subscribe({
               next: (updatedGuest) => {
                 // Update the guest signal with saved PDF URL
                 this.guest.set(updatedGuest);
+                console.log('✅ PDF URL saved to database');
               },
-              error: () => {
-                console.warn('Failed to save PDF URL to database');
+              error: (err) => {
+                // Not critical - PDF was already generated and downloaded
+                console.warn('Failed to save PDF URL to database:', err?.error?.message || err);
               }
             });
           },
-          error: () => {
+          error: (err) => {
             // Silently fail - PDF upload not critical
-            console.warn('Failed to upload PDF to backend');
+            console.warn('Failed to upload PDF to backend:', err?.error?.message || err);
           }
         });
       });

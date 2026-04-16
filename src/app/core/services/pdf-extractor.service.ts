@@ -77,6 +77,11 @@ export class PdfExtractorService {
   }
 
   private parseExtractedText(text: string): ExtractedGuestData {
+    // Debug: log the extracted text to see what we're working with
+    console.log('=== PDF EXTRACTED TEXT ===');
+    console.log(text);
+    console.log('=== END PDF TEXT ===');
+    
     const errors: string[] = [];
     const data: ExtractedGuestData = {
       firstName: '',
@@ -87,13 +92,20 @@ export class PdfExtractorService {
     };
 
     try {
-      // Extract Name
-      const nameMatch = text.match(/Name\s+([A-Za-z\s]+?)(?=Reservation|$)/i);
+      // Extract Name - allow letters, spaces, hyphens, and other common characters in names
+      const nameMatch = text.match(/Name\s+([A-Za-z\s\-\.\']+?)(?=\s*(?:Check in|Reservation|$))/i);
       if (nameMatch) {
         const fullName = nameMatch[1].trim();
-        const nameParts = fullName.split(/\s+/);
-        data.firstName = nameParts[0] || '';
-        data.lastName = nameParts.slice(1).join(' ') || '';
+        // Split by space or hyphen followed by space
+        const nameParts = fullName.split(/[\s]+/).filter(part => part.length > 0);
+        if (nameParts.length >= 2) {
+          // If name contains hyphen like "Getz Pharma- Alex", handle it
+          data.firstName = nameParts[0] || '';
+          data.lastName = nameParts.slice(1).join(' ') || '';
+        } else if (nameParts.length === 1) {
+          data.firstName = nameParts[0] || '';
+          data.lastName = '';
+        }
       } else {
         errors.push('Could not extract name');
       }
@@ -102,10 +114,13 @@ export class PdfExtractorService {
       const resMatch = text.match(/Reservation Number\s+(\d+)/i);
       data.reservationNumber = resMatch ? resMatch[1].trim() : '';
 
-      // Extract Phone
-      const phoneMatch = text.match(/Phone Number\s+([\d\s]+?)(?=VEHICLE|Check)/i);
+      // Extract Phone - include + sign for international format
+      const phoneMatch = text.match(/Phone Number\s+([\+\d\s\-]+)(?=\s*(?:VEHICLE|Check|Room|Email))/i);
       if (phoneMatch) {
-        data.phoneNumber = phoneMatch[1].trim().replace(/\s+/g, ' ');
+        data.phoneNumber = phoneMatch[1].trim().replace(/\s+/g, '');
+        console.log('Extracted Phone Number:', data.phoneNumber);
+      } else {
+        console.log('Phone Number not found in text');
       }
 
       // Extract Email - find guest email in guest info section, skip hotel email
@@ -135,14 +150,14 @@ export class PdfExtractorService {
         // Otherwise leave it blank (empty string)
       }
 
-      // Extract Check-in Date (format: MM/DD/YYYY -> ISO: YYYY-MM-DD)
-      const checkInMatch = text.match(/Check in Date\s+(\d{2}\/\d{2}\/\d{4})/i);
+      // Extract Check-in Date (format: DD/MM/YYYY -> ISO: YYYY-MM-DD)
+      const checkInMatch = text.match(/Check in Date\s+(\d{1,2}[\s\/\-\.]+\d{1,2}[\s\/\-\.]+\d{4})/i);
       if (checkInMatch) {
         data.checkInDate = this.convertDateToISO(checkInMatch[1]);
       }
 
       // Extract Check-out Date
-      const checkOutMatch = text.match(/Check out Date\s+(\d{2}\/\d{2}\/\d{4})/i);
+      const checkOutMatch = text.match(/Check out Date\s+(\d{1,2}[\s\/\-\.]+\d{1,2}[\s\/\-\.]+\d{4})/i);
       if (checkOutMatch) {
         data.checkOutDate = this.convertDateToISO(checkOutMatch[1]);
       }
@@ -163,13 +178,41 @@ export class PdfExtractorService {
         data.checkOutTime = '11:00'; // Default
       }
 
-      // Extract Room Type
-      const roomTypeMatch = text.match(/Room Type\s+([^\n]+?)(?=Email|Check out|Room Number)/i);
-      data.roomType = roomTypeMatch ? roomTypeMatch[1].trim() : '';
+      // Extract Room Type - capture multiple room types (comma-separated)
+      // The text format: "Room Type  JUNIOR EXECUTIVE (KING BED)...  Email"
+      let roomTypeMatch = text.match(/Room\s*Type\s+([A-Z\s\(\)\-,0-9]+?)(?=\s*Email|\s*Room\s*Number|\s*Country)/i);
+      
+      if (!roomTypeMatch) {
+        // Alternative: capture everything between "Room Type" and common following fields
+        roomTypeMatch = text.match(/Room\s*Type\s+([\w\s\(\)\-,]+?)(?=\s+(?:Email|Room\s*Number|Country|Philippines|\d{3}))/i);
+      }
+      
+      if (roomTypeMatch) {
+        // Clean up the room type text: remove extra spaces, keep commas
+        let roomTypeText = roomTypeMatch[1].trim();
+        // Replace multiple spaces/newlines with single space
+        roomTypeText = roomTypeText.replace(/\s+/g, ' ');
+        // Remove trailing comma if exists
+        roomTypeText = roomTypeText.replace(/,\s*$/, '');
+        data.roomType = roomTypeText;
+        console.log('Extracted Room Type:', data.roomType);
+      } else {
+        data.roomType = '';
+        console.log('Room Type not found in text');
+      }
 
-      // Extract Room Number
-      const roomNumMatch = text.match(/Room Number\s+(\d+)/i);
-      data.roomNumber = roomNumMatch ? roomNumMatch[1].trim() : '';
+      // Extract Room Number - capture multiple room numbers (comma-separated like "502, 506")
+      const roomNumMatch = text.match(/Room\s*Number\s+([\d,\s]+)/i);
+      if (roomNumMatch) {
+        // Clean up room numbers: normalize spaces around commas
+        let roomNumbers = roomNumMatch[1].trim();
+        roomNumbers = roomNumbers.replace(/\s*,\s*/g, ', ');
+        data.roomNumber = roomNumbers;
+        console.log('Extracted Room Number:', data.roomNumber);
+      } else {
+        data.roomNumber = '';
+        console.log('Room Number not found in text');
+      }
 
       // Extract Valid ID Presented
       const validIdMatch = text.match(/Valid ID Presented:\s*[☐✓]?\s*Yes/i);
@@ -215,9 +258,17 @@ export class PdfExtractorService {
   }
 
   private convertDateToISO(dateStr: string): string {
-    // Convert MM/DD/YYYY to YYYY-MM-DD
-    const [month, day, year] = dateStr.split('/');
-    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    // Handle DD/MM/YYYY format (common in PH) -> YYYY-MM-DD
+    // Handle various separators: /, -, ., space
+    const parts = dateStr.split(/[\s\/\-\.]+/).filter(p => p);
+    if (parts.length === 3) {
+      const [day, month, year] = parts;
+      // Pad day and month with leading zeros if needed
+      const paddedDay = day.padStart(2, '0');
+      const paddedMonth = month.padStart(2, '0');
+      return `${year}-${paddedMonth}-${paddedDay}`;
+    }
+    return dateStr; // Return as-is if format is unexpected
   }
 
   private convertTo24Hour(timeStr: string): string {

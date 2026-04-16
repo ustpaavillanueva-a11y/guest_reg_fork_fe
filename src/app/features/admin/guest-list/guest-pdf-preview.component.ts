@@ -82,7 +82,13 @@ import html2pdf from 'html2pdf.js';
               </div>
               <div class="info-col">
                 <div class="info-label">ROOM TYPE</div>
-                <div class="info-value">{{ reservation.roomType?.name || '—' }}</div>
+                <div class="info-value">{{ getRoomTypeName(reservation.roomType) }}</div>
+                getRoomTypeName(roomType: any): string {
+                  if (!roomType) return '—';
+                  if (typeof roomType === 'string') return roomType;
+                  if (roomType.name) return roomType.name;
+                  return '—';
+                }
               </div>
               <div class="info-col">
                 <div class="info-label">ROOM NUMBER</div>
