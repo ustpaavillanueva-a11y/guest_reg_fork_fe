@@ -77,11 +77,7 @@ Chart.register(LinearScale, CategoryScale, BarController, BarElement, Legend, To
       </mat-card-header>
       <mat-card-content>
         <table mat-table [dataSource]="recentGuests()" class="full-width">
-          <ng-container matColumnDef="name">
-            <th mat-header-cell *matHeaderCellDef>Guest Name</th>
-            <td mat-cell *matCellDef="let guest">{{ guest.lastName }}, {{ guest.firstName }}</td>
-          </ng-container>
-
+          
           <ng-container matColumnDef="reservationNumber">
             <th mat-header-cell *matHeaderCellDef>Reservation #</th>
             <td mat-cell *matCellDef="let guest">
@@ -92,7 +88,13 @@ Chart.register(LinearScale, CategoryScale, BarController, BarElement, Legend, To
               }
             </td>
           </ng-container>
+          
+          <ng-container matColumnDef="name">
+            <th mat-header-cell *matHeaderCellDef>Guest Name</th>
+            <td mat-cell *matCellDef="let guest">{{ guest.lastName }}, {{ guest.firstName }}</td>
+          </ng-container>
 
+          
           <ng-container matColumnDef="phone">
             <th mat-header-cell *matHeaderCellDef>Phone</th>
             <td mat-cell *matCellDef="let guest">{{ guest.phoneNumber || '-' }}</td>
