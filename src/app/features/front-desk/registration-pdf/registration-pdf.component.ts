@@ -82,7 +82,7 @@ import html2pdf from 'html2pdf.js';
               </div>
               <div class="info-cell">
                 <span class="label">Room Type</span>
-                <span class="value">{{ getRoomTypeName(reservation.roomType) }}</span>
+                <span class="value">{{ getRoomTypeName(reservation.roomType, ri) }}</span>
               </div>
               <div class="info-cell">
                 <span class="label">Room Number</span>
@@ -597,8 +597,25 @@ export class RegistrationPdfComponent implements OnInit {
         console.log('Phone Number:', guest.phoneNumber);
         console.log('Reservations:', guest.reservations);
         if (guest.reservations && guest.reservations.length > 0) {
-          console.log('Room Type (raw):', guest.reservations[0].roomType);
-          console.log('Room Type typeof:', typeof guest.reservations[0].roomType);
+          guest.reservations.forEach((res, idx) => {
+            console.log(`\n📍 Reservation ${idx + 1}:`);
+            console.log('  - Room Number:', res.roomNumber);
+            console.log('  - Room Type (raw):', res.roomType);
+            console.log('  - Room Type typeof:', typeof res.roomType);
+            
+            // Handle roomType being either string or object
+            if (res.roomType) {
+              if (typeof res.roomType === 'string') {
+                console.log('  - Room Type (string):', res.roomType);
+              } else if (typeof res.roomType === 'object' && (res.roomType as any).name) {
+                console.log('  - Room Type (object):', (res.roomType as any).name);
+              }
+              console.log('  - Full roomType data:', res.roomType);
+            } else {
+              console.warn('  ⚠️  Room Type is NULL/UNDEFINED!');
+            }
+            console.log('  - Full reservation:', res);
+          });
         }
         console.log('Full guest data:', guest);
         
@@ -621,66 +638,118 @@ export class RegistrationPdfComponent implements OnInit {
   }
 
   // Helper to get room type name - handles both string and object formats
-  getRoomTypeName(roomType: any): string {
-    if (!roomType) return '—';
-    // If it's a string, return it directly
-    if (typeof roomType === 'string') return roomType;
-    // If it's an object with name property
-    if (roomType.name) return roomType.name;
+  // Supports multiple formats from different API versions
+  getRoomTypeName(roomType: any, reservationIndex: number = 0): string {
+    // Handle null/undefined - try to get from backup storage
+    if (!roomType) {
+      const guest = this.guest();
+      if (guest && (guest.agreement as any)?.roomTypesBackup) {
+        const roomTypes = (guest.agreement as any).roomTypesBackup.split(', ');
+        const backupRoomType = roomTypes[reservationIndex] || roomTypes[0];
+        if (backupRoomType) {
+          console.log(`✅ Using backup roomType for reservation ${reservationIndex}: ${backupRoomType}`);
+          return this.normalizeRoomTypeName(backupRoomType.trim()) || '—';
+        }
+      }
+      console.warn('getRoomTypeName received null/undefined and no backup available');
+      return '—';
+    }
+    
+    // Handle new backend format (full object with name property)
+    if (typeof roomType === 'object' && roomType.name) {
+      return this.normalizeRoomTypeName(roomType.name) || '—';
+    }
+    
+    // Handle string type (from frontend/PDF)
+    if (typeof roomType === 'string') {
+      return this.normalizeRoomTypeName(roomType) || '—';
+    }
+    
+    // Handle other object properties as fallback
+    if (typeof roomType === 'object') {
+      const fallback = roomType.roomType || roomType.type || roomType.title;
+      if (fallback && typeof fallback === 'string') {
+        return this.normalizeRoomTypeName(fallback) || '—';
+      }
+      return fallback || '—';
+    }
+    
     return '—';
   }
 
+  private normalizeRoomTypeName(name: string): string {
+    // Replace newlines with spaces and collapse multiple spaces
+    return name
+      .replace(/\n/g, ' ')      // Replace newlines with space
+      .replace(/\r/g, ' ')      // Replace carriage returns with space
+      .replace(/\s+/g, ' ')     // Collapse multiple spaces to single space
+      .trim();                   // Remove leading/trailing whitespace
+  }
+
   private generateAndSavePdf(guest: Guest): void {
-    // Give browser time to render the PDF content
-    setTimeout(() => {
-      const pdfContent = document.getElementById('pdfContent');
-      if (!pdfContent) return;
+    // Give browser enough time to fully render all interpolations including getRoomTypeName()
+    // Use requestAnimationFrame for proper rendering sync
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        const pdfContent = document.getElementById('pdfContent');
+        if (!pdfContent) {
+          console.warn('PDF content element not found');
+          return;
+        }
 
-      const clonedContent = pdfContent.cloneNode(true) as HTMLElement;
-      
-      // Remove no-print elements
-      clonedContent.querySelectorAll('.no-print, .action-bar').forEach(el => {
-        (el as HTMLElement).remove();
-      });
-
-      // Generate PDF as Blob file
-      const options: any = {
-        margin: [5, 5, 5, 5],
-        image: { type: 'jpeg' as const, quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' }
-      };
-
-      html2pdf().set(options).from(clonedContent).output('blob').then((pdfBlob: Blob) => {
-        // Create File object from Blob
-        const fileName = `Registration_${guest.lastName}_${guest.firstName}_${new Date().getTime()}.pdf`;
-        const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
-
-        // Upload to backend
-        this.guestService.uploadPdf(guest.id, pdfFile).subscribe({
-          next: (response) => {
-            // Save the returned URL to the database - send pdfPath at root level
-            this.guestService.update(guest.id, {
-              pdfPath: response.pdfUrl
-            } as any).subscribe({
-              next: (updatedGuest) => {
-                // Update the guest signal with saved PDF URL
-                this.guest.set(updatedGuest);
-                console.log('✅ PDF URL saved to database');
-              },
-              error: (err) => {
-                // Not critical - PDF was already generated and downloaded
-                console.warn('Failed to save PDF URL to database:', err?.error?.message || err);
-              }
-            });
-          },
-          error: (err) => {
-            // Silently fail - PDF upload not critical
-            console.warn('Failed to upload PDF to backend:', err?.error?.message || err);
-          }
+        console.log('📄 Generating PDF - checking rendered content:');
+        const roomTypeElements = pdfContent.querySelectorAll('[class*="Room Type"]');
+        roomTypeElements.forEach(el => {
+          console.log('  Room Type element:', el.textContent);
         });
-      });
-    }, 500); // Give template time to render
+
+        const clonedContent = pdfContent.cloneNode(true) as HTMLElement;
+        
+        // Remove no-print elements
+        clonedContent.querySelectorAll('.no-print, .action-bar').forEach((el: Element) => {
+          (el as HTMLElement).remove();
+        });
+
+        // Generate PDF as Blob file
+        const options: any = {
+          margin: [5, 5, 5, 5],
+          image: { type: 'jpeg' as const, quality: 0.98 },
+          html2canvas: { scale: 2 },
+          jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' }
+        };
+
+        html2pdf().set(options).from(clonedContent).output('blob').then((pdfBlob: Blob) => {
+          // Create File object from Blob
+          const fileName = `Registration_${guest.lastName}_${guest.firstName}_${new Date().getTime()}.pdf`;
+          const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+
+          // Upload to backend
+          this.guestService.uploadPdf(guest.id, pdfFile).subscribe({
+            next: (response) => {
+              console.log('✅ PDF uploaded successfully');
+              // Save the returned URL to the database - send pdfPath at root level
+              this.guestService.update(guest.id, {
+                pdfPath: response.pdfUrl
+              } as any).subscribe({
+                next: (updatedGuest) => {
+                  // Update the guest signal with saved PDF URL
+                  this.guest.set(updatedGuest);
+                  console.log('✅ PDF URL saved to database');
+                },
+                error: (err) => {
+                  // Not critical - PDF was already generated and downloaded
+                  console.warn('Failed to save PDF URL to database:', err?.error?.message || err);
+                }
+              });
+            },
+            error: (err) => {
+              // Silently fail - PDF upload not critical
+              console.warn('Failed to upload PDF to backend:', err?.error?.message || err);
+            }
+          });
+        });
+      }, 500); // setTimeout delay
+    }); // requestAnimationFrame
   }
 
   downloadAllPdf(): void {

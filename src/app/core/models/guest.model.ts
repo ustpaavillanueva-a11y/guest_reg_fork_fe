@@ -63,6 +63,7 @@ export interface GuestAgreement {
   processedBySignature: string;
   remarks?: string;
   pdfPath?: string;
+  roomTypesBackup?: string;  // Backup room types for PDF display fallback
 }
 
 export interface CreateGuestRequest {
@@ -116,6 +117,7 @@ export interface CreateAgreementRequest {
   processedBySignature: string;
   remarks?: string;
   pdfPath?: string;
+  roomTypesBackup?: string;  // Backup room types for PDF display fallback
 }
 
 export type StatisticsPeriod = 'today' | 'week' | 'month' | 'year';

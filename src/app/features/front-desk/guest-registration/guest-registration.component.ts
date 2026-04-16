@@ -985,6 +985,18 @@ export class GuestRegistrationComponent implements OnInit {
     const policies = this.policiesForm.getRawValue();
     const signature = this.signatureForm.getRawValue();
 
+    // Extract room types for backup storage in agreement
+    // Clean up newlines and extra spaces from room type strings (from PDF extraction)
+    const roomTypes = reservations.map((r: any) => {
+      if (!r.roomType) return '';
+      // Replace newlines with spaces and collapse multiple spaces
+      return r.roomType
+        .replace(/\n/g, ' ')          // Replace newlines with space
+        .replace(/\r/g, ' ')          // Replace carriage returns with space
+        .replace(/\s+/g, ' ')         // Collapse multiple spaces to single space
+        .trim();                       // Remove leading/trailing whitespace
+    }).filter(Boolean).join(', ');   // Filter out empty strings and join
+
     const payload = {
       ...guestInfoClean,
       reservations,
@@ -996,6 +1008,7 @@ export class GuestRegistrationComponent implements OnInit {
         processedByName: signature.processedByName,
         processedBySignature: this.frontDeskSignatureData,
         remarks: signature.remarks || undefined,
+        roomTypesBackup: roomTypes, // Backup room types in agreement for retrieval
       },
     };
 
@@ -1017,6 +1030,41 @@ export class GuestRegistrationComponent implements OnInit {
         this.snackBar.open(err.error?.message ?? 'Registration failed', 'Close', { duration: 5000 });
       },
     });
+  }
+
+  private getRoomTypeForPdf(roomType: any): string {
+    // Handle null/undefined
+    if (!roomType) return '—';
+    
+    // Handle object format (from backend API response)
+    if (typeof roomType === 'object' && roomType.name) {
+      return this.normalizeRoomTypeName(roomType.name) || '—';
+    }
+    
+    // Handle string format (from form or PDF extraction)
+    if (typeof roomType === 'string') {
+      return this.normalizeRoomTypeName(roomType) || '—';
+    }
+    
+    // Handle other object properties as fallback
+    if (typeof roomType === 'object') {
+      const fallback = roomType.roomType || roomType.type || roomType.title;
+      if (fallback && typeof fallback === 'string') {
+        return this.normalizeRoomTypeName(fallback) || '—';
+      }
+      return fallback || '—';
+    }
+    
+    return '—';
+  }
+
+  private normalizeRoomTypeName(name: string): string {
+    // Replace newlines with spaces and collapse multiple spaces
+    return name
+      .replace(/\n/g, ' ')      // Replace newlines with space
+      .replace(/\r/g, ' ')      // Replace carriage returns with space
+      .replace(/\s+/g, ' ')     // Collapse multiple spaces to single space
+      .trim();                   // Remove leading/trailing whitespace
   }
 
   private generateRegistrationPDF(data: any, guestId: string): void {
@@ -1067,7 +1115,7 @@ export class GuestRegistrationComponent implements OnInit {
                     <td style="padding: 5px 0;"><strong>Check-in:</strong> ${res.checkInDate}</td>
                   </tr>
                   <tr>
-                    <td style="padding: 5px 0;"><strong>Room Type:</strong> ${res.roomType}</td>
+                    <td style="padding: 5px 0;"><strong>Room Type:</strong> ${this.getRoomTypeForPdf(res.roomType)}</td>
                     <td style="padding: 5px 0;"><strong>Check-out:</strong> ${res.checkOutDate}</td>
                   </tr>
                   <tr>

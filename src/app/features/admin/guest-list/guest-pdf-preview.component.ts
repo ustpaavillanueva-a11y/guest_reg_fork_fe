@@ -63,7 +63,7 @@ import html2pdf from 'html2pdf.js';
             <div class="info-row">
               <div class="info-col">
                 <div class="info-label">NAME</div>
-                <div class=\"info-value\">{{ guest?.lastName }}, {{ guest?.firstName }}{{ guest?.middleName ? ' ' + guest?.middleName : '' }}</div>
+                <div class="info-value">{{ guest?.lastName }}, {{ guest?.firstName }}{{ guest?.middleName ? ' ' + guest?.middleName : '' }}</div>
               </div>
               <div class="info-col">
                 <div class="info-label">RESERVATION DATE</div>
@@ -82,13 +82,7 @@ import html2pdf from 'html2pdf.js';
               </div>
               <div class="info-col">
                 <div class="info-label">ROOM TYPE</div>
-                <div class="info-value">{{ getRoomTypeName(reservation.roomType) }}</div>
-                getRoomTypeName(roomType: any): string {
-                  if (!roomType) return '—';
-                  if (typeof roomType === 'string') return roomType;
-                  if (roomType.name) return roomType.name;
-                  return '—';
-                }
+                <div class="info-value">{{ getRoomTypeName(reservation.roomType, ri) }}</div>
               </div>
               <div class="info-col">
                 <div class="info-label">ROOM NUMBER</div>
@@ -618,6 +612,31 @@ export class GuestPdfPreviewComponent {
   ) {
     this.guest = data;
     
+    // Debug: Log what data we received
+    if (this.guest) {
+      console.log('=== GUEST PDF PREVIEW DATA ===');
+      console.log('Guest object:', this.guest);
+      console.log('Reservations:', this.guest.reservations);
+      console.log('Number of reservations:', this.guest.reservations?.length);
+      
+      if (this.guest.reservations && this.guest.reservations.length > 0) {
+        this.guest.reservations.forEach((res, idx) => {
+          console.log(`\n📍 Reservation ${idx + 1}:`);
+          console.log('  Complete reservation object:', res);
+          console.log('  - roomType (raw):', res.roomType);
+          console.log('  - roomType type:', typeof res.roomType);
+          console.log('  - roomNumber:', res.roomNumber);
+          console.log('  - checkInDate:', res.checkInDate);
+          console.log('  - checkOutDate:', res.checkOutDate);
+          console.log('  - All keys:', Object.keys(res));
+        });
+      } else {
+        console.warn('⚠️ No reservations found in guest data');
+      }
+    } else {
+      console.warn('⚠️ Guest data is null');
+    }
+    
     // Sanitize PDF URL for iframe
     if (this.guest && this.guest.agreement && this.guest.agreement.pdfPath) {
       this.sanitizedPdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(
@@ -645,63 +664,134 @@ export class GuestPdfPreviewComponent {
     }
 
     try {
-      const element = document.getElementById('guestPdfContent');
-      if (!element) {
-        this.generatingPdf.set(false);
-        return;
-      }
+      // Use requestAnimationFrame to ensure full DOM rendering
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          const element = document.getElementById('guestPdfContent');
+          if (!element) {
+            console.warn('PDF content element not found');
+            this.generatingPdf.set(false);
+            return;
+          }
 
-      const clonedContent = element.cloneNode(true) as HTMLElement;
-
-      const opt = {
-        margin: 8,
-        filename: `Guest-${this.guest.lastName}-${this.guest.firstName}.pdf`,
-        image: { type: 'png' as const, quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { orientation: 'portrait' as const, unit: 'mm' as const, format: 'a4' }
-      };
-
-      html2pdf()
-        .set(opt)
-        .from(clonedContent)
-        .output('blob')
-        .then((pdfBlob: Blob) => {
-          const fileName = `Guest_${this.guest!.lastName}_${this.guest!.firstName}_${new Date().getTime()}.pdf`;
-          const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
-
-          // Upload to Supabase
-          this.guestService.uploadPdf(this.guest!.id, pdfFile).subscribe({
-            next: (response) => {
-              // Save the returned URL to the database
-              this.guestService
-                .update(this.guest!.id, {
-                  agreement: {
-                    ...this.guest!.agreement,
-                    pdfPath: response.pdfUrl
-                  }
-                })
-                .subscribe({
-                  next: (updatedGuest) => {
-                    this.guest = updatedGuest;
-                    this.sanitizedPdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(
-                      updatedGuest.agreement.pdfPath!
-                    );
-                    this.generatingPdf.set(false);
-                  },
-                  error: () => {
-                    this.generatingPdf.set(false);
-                  }
-                });
-            },
-            error: () => {
-              this.generatingPdf.set(false);
-            }
+          console.log('📄 Generating Guest PDF - checking rendered content');
+          const roomTypeElements = element.querySelectorAll('.info-value');
+          roomTypeElements.forEach((el, idx) => {
+            if (idx < 10) console.log(`  Info ${idx}:`, el.textContent);
           });
-        });
+
+          const clonedContent = element.cloneNode(true) as HTMLElement;
+
+          const opt = {
+            margin: 8,
+            filename: `Guest-${this.guest!.lastName}-${this.guest!.firstName}.pdf`,
+            image: { type: 'png' as const, quality: 0.98 },
+            html2canvas: { scale: 2 },
+            jsPDF: { orientation: 'portrait' as const, unit: 'mm' as const, format: 'a4' }
+          };
+
+          html2pdf()
+            .set(opt)
+            .from(clonedContent)
+            .output('blob')
+            .then((pdfBlob: Blob) => {
+              const fileName = `Guest_${this.guest!.lastName}_${this.guest!.firstName}_${new Date().getTime()}.pdf`;
+              const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+
+              // Upload to Supabase
+              this.guestService.uploadPdf(this.guest!.id, pdfFile).subscribe({
+                next: (response) => {
+                  // Save the returned URL to the database
+                  this.guestService
+                    .update(this.guest!.id, {
+                      agreement: {
+                        ...this.guest!.agreement,
+                        pdfPath: response.pdfUrl
+                      }
+                    })
+                    .subscribe({
+                      next: (updatedGuest) => {
+                        this.guest = updatedGuest;
+                        this.sanitizedPdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(
+                          updatedGuest.agreement.pdfPath!
+                        );
+                        this.generatingPdf.set(false);
+                      },
+                      error: () => {
+                        this.generatingPdf.set(false);
+                      }
+                    });
+                },
+                error: () => {
+                  this.generatingPdf.set(false);
+                }
+              });
+            });
+        }, 500);  // setTimeout delay
+      }); // requestAnimationFrame
     } catch (error) {
       console.error('Error generating PDF:', error);
       this.generatingPdf.set(false);
     }
+  }
+
+  getRoomTypeName(roomType: any, reservationIndex: number = 0): string {
+    // Debug logging
+    console.log('🔍 getRoomTypeName called with:', { 
+      roomType, 
+      type: typeof roomType,
+      isNull: roomType === null,
+      isUndefined: roomType === undefined,
+      isEmpty: !roomType
+    });
+    
+    // Handle null/undefined - try to get from backup storage
+    if (!roomType) {
+      if (this.guest && (this.guest.agreement as any)?.roomTypesBackup) {
+        const roomTypes = (this.guest.agreement as any).roomTypesBackup.split(', ');
+        const backupRoomType = roomTypes[reservationIndex] || roomTypes[0];
+        if (backupRoomType) {
+          console.log(`✅ Using backup roomType for reservation ${reservationIndex}: ${backupRoomType}`);
+          return this.normalizeRoomTypeName(backupRoomType.trim()) || '—';
+        }
+      }
+      console.warn('⚠️ roomType is null/undefined and no backup available, returning —');
+      return '—';
+    }
+    
+    // Handle new backend response format (full object with id, name, etc.)
+    if (typeof roomType === 'object' && roomType.name) {
+      console.log('✅ roomType is object with name:', roomType.name);
+      return this.normalizeRoomTypeName(roomType.name) || '—';
+    }
+    
+    // Handle old format or string type (direct room type name)
+    if (typeof roomType === 'string') {
+      console.log('✅ roomType is string:', roomType);
+      return this.normalizeRoomTypeName(roomType) || '—';
+    }
+    
+    // Handle other object properties as fallback
+    if (typeof roomType === 'object') {
+      console.log('⚠️ roomType is object but no name property, checking fallbacks:', roomType);
+      const fallback = roomType.roomType || roomType.type || roomType.title;
+      if (fallback && typeof fallback === 'string') {
+        return this.normalizeRoomTypeName(fallback) || '—';
+      }
+      return fallback || '—';
+    }
+    
+    console.log('❌ roomType could not be processed');
+    return '—';
+  }
+
+  private normalizeRoomTypeName(name: string): string {
+    // Replace newlines with spaces and collapse multiple spaces
+    return name
+      .replace(/\n/g, ' ')      // Replace newlines with space
+      .replace(/\r/g, ' ')      // Replace carriage returns with space
+      .replace(/\s+/g, ' ')     // Collapse multiple spaces to single space
+      .trim();                   // Remove leading/trailing whitespace
   }
 
   downloadPdf(): void {
@@ -748,22 +838,29 @@ export class GuestPdfPreviewComponent {
     this.downloading.set(true);
     
     try {
-      const element = document.getElementById('guestPdfContent');
-      if (!element) {
-        this.downloading.set(false);
-        return;
-      }
+      // Use requestAnimationFrame to ensure full DOM rendering
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          const element = document.getElementById('guestPdfContent');
+          if (!element) {
+            this.downloading.set(false);
+            return;
+          }
 
-      const opt = {
-        margin: 8,
-        filename: `Guest-${this.guest.lastName}-${this.guest.firstName}.pdf`,
-        image: { type: 'png' as const, quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { orientation: 'portrait' as const, unit: 'mm' as const, format: 'a4' }
-      };
+          const opt = {
+            margin: 8,
+            filename: `Guest-${this.guest!.lastName}-${this.guest!.firstName}.pdf`,
+            image: { type: 'png' as const, quality: 0.98 },
+            html2canvas: { scale: 2 },
+            jsPDF: { orientation: 'portrait' as const, unit: 'mm' as const, format: 'a4' }
+          };
 
-      html2pdf().set(opt).from(element).save();
-    } finally {
+          html2pdf().set(opt).from(element).save();
+          this.downloading.set(false);
+        }, 500); // setTimeout delay
+      }); // requestAnimationFrame
+    } catch (error) {
+      console.error('Error generating PDF:', error);
       this.downloading.set(false);
     }
   }
