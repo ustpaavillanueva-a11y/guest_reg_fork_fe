@@ -998,8 +998,16 @@ export class GuestRegistrationComponent implements OnInit {
       ...(email && email.trim() ? { email: email.trim() } : {}), // Only include if not empty
     };
     
-    const reservations = this.reservations.getRawValue().map((r: any) => {
-      // Don't send roomType - backend handles it separately
+    const reservationsRaw = this.reservations.getRawValue();
+    
+    // Extract room types for backup storage in agreement
+    const roomTypesBackup = reservationsRaw
+      .map((r: any) => r.roomType)
+      .filter((rt: any) => rt) // Only include non-empty values
+      .join(', ');
+
+    const reservations = reservationsRaw.map((r: any) => {
+      // Don't send roomType - backend rejects it
       const { roomType, accompanyingGuests, ...resWithoutRoomType } = r;
       return {
         ...resWithoutRoomType,
@@ -1023,7 +1031,7 @@ export class GuestRegistrationComponent implements OnInit {
         processedByName: signature.processedByName,
         processedBySignature: this.frontDeskSignatureData,
         remarks: signature.remarks || undefined,
-        // roomTypesBackup not needed - backend manages room types
+        roomTypesBackup: roomTypesBackup || undefined, // Backup for PDF display fallback
       },
     };
 
