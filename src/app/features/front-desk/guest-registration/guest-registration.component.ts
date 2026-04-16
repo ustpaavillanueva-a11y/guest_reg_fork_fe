@@ -998,18 +998,27 @@ export class GuestRegistrationComponent implements OnInit {
       ...(email && email.trim() ? { email: email.trim() } : {}), // Only include if not empty
     };
     
-    const reservations = this.reservations.getRawValue().map((r: any) => {
-      // Extract roomType but don't send it to backend (backend rejects it)
-      const { roomType, ...reservationWithoutRoomType } = r;
-      return {
-        ...reservationWithoutRoomType,
-        reservationNumber: this.generateReservationNumber(),
-        checkInDate: this.formatDate(reservationWithoutRoomType.checkInDate),
-        checkOutDate: reservationWithoutRoomType.checkOutDate ? this.formatDate(reservationWithoutRoomType.checkOutDate) : undefined,
-      };
-    });
+    const reservations = this.reservations.getRawValue().map((r: any) => ({
+      ...r,
+      roomType: r.roomType || '', // Send room type name as string - backend handles conversion
+      reservationNumber: this.generateReservationNumber(),
+      checkInDate: this.formatDate(r.checkInDate),
+      checkOutDate: r.checkOutDate ? this.formatDate(r.checkOutDate) : undefined,
+    }));
     const policies = this.policiesForm.getRawValue();
     const signature = this.signatureForm.getRawValue();
+
+    // Extract room types for backup storage in agreement
+    // Clean up newlines and extra spaces from room type strings (from PDF extraction)
+    const roomTypes = reservations.map((r: any) => {
+      if (!r.roomType) return '';
+      // Replace newlines with spaces and collapse multiple spaces
+      return r.roomType
+        .replace(/\n/g, ' ')          // Replace newlines with space
+        .replace(/\r/g, ' ')          // Replace carriage returns with space
+        .replace(/\s+/g, ' ')         // Collapse multiple spaces to single space
+        .trim();                       // Remove leading/trailing whitespace
+    }).filter(Boolean).join(', ');   // Filter out empty strings and join
 
     const payload = {
       ...guestInfoClean,
@@ -1022,7 +1031,7 @@ export class GuestRegistrationComponent implements OnInit {
         processedByName: signature.processedByName,
         processedBySignature: this.frontDeskSignatureData,
         remarks: signature.remarks || undefined,
-        // roomTypesBackup removed - backend no longer accepts it
+        roomTypesBackup: roomTypes, // Backup room types in agreement for retrieval
       },
     };
 
