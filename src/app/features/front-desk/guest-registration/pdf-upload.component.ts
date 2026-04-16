@@ -524,12 +524,10 @@ export class PdfUploadComponent {
       const data = await this.pdfExtractor.extractGuestDataFromPdf(file);
       this.extractedData.set(data);
       this.populateForm(data);
-      this.snackBar.open('✅ PDF processed successfully - proceeding to signature...', 'Close', { duration: 2000 });
+      this.snackBar.open('✅ PDF processed successfully!', 'Close', { duration: 3000 });
       
-      // Auto-navigate to signature/agreement step after brief delay
-      setTimeout(() => {
-        this.confirmAndProceed();
-      }, 1500);
+      // User will manually click "Proceed to Registration" button
+      // Removed auto-navigate to allow user to review extracted data first
     } catch (error) {
       console.error('File processing error:', error);
       this.snackBar.open('❌ Failed to process PDF', 'Close', { duration: 3000 });

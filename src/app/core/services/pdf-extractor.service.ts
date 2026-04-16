@@ -178,27 +178,36 @@ export class PdfExtractorService {
         data.checkOutTime = '11:00'; // Default
       }
 
-      // Extract Room Type - capture multiple room types (comma-separated)
-      // The text format: "Room Type  JUNIOR EXECUTIVE (KING BED)...  Email"
-      let roomTypeMatch = text.match(/Room\s*Type\s+([A-Z\s\(\)\-,0-9]+?)(?=\s*Email|\s*Room\s*Number|\s*Country)/i);
+      // Extract Room Type - capture ALL room types until "Email" is found
+      // Pattern: Find ALL occurrences of "Room Type" and use the LONGEST one (most complete)
+      // This handles PDFs with multiple pages where room type appears multiple times
+      const roomTypeMatches = [];
+      const pattern = /Room\s*Type\s+([\s\S]+?)(?=\s*Email|\s*Room\s*Number|\s*Check|Country|Philippines)/gi;
       
-      if (!roomTypeMatch) {
-        // Alternative: capture everything between "Room Type" and common following fields
-        roomTypeMatch = text.match(/Room\s*Type\s+([\w\s\(\)\-,]+?)(?=\s+(?:Email|Room\s*Number|Country|Philippines|\d{3}))/i);
+      let match;
+      while ((match = pattern.exec(text)) !== null) {
+        roomTypeMatches.push(match[1]);
       }
       
+      // Use the LONGEST match (most complete room type info)
+      let roomTypeMatch = roomTypeMatches.length > 0 ? roomTypeMatches.reduce((a, b) => 
+        a.length > b.length ? a : b) : null;
+      
       if (roomTypeMatch) {
-        // Clean up the room type text: remove extra spaces, keep commas
-        let roomTypeText = roomTypeMatch[1].trim();
-        // Replace multiple spaces/newlines with single space
+        // Clean up the room type text: remove extra spaces/newlines, keep commas
+        let roomTypeText = roomTypeMatch.trim();
+        // Replace ALL whitespace (including newlines) with single space
         roomTypeText = roomTypeText.replace(/\s+/g, ' ');
-        // Remove trailing comma if exists
-        roomTypeText = roomTypeText.replace(/,\s*$/, '');
+        // Remove trailing/leading spaces and commas
+        roomTypeText = roomTypeText.replace(/^[\s,]+|[\s,]+$/g, '');
         data.roomType = roomTypeText;
-        console.log('Extracted Room Type:', data.roomType);
+        console.log('✅ Extracted All Room Type(s):', data.roomType);
+        console.log('   Found', roomTypeMatches.length, 'room type section(s), using longest match');
+        console.log('   Multiple rooms captured:', roomTypeText.includes(',') ? 'YES' : 'NO');
       } else {
         data.roomType = '';
-        console.log('Room Type not found in text');
+        console.log('⚠️ Room Type not found in text');
+        console.log('   Searched for pattern: "Room Type...Email/Room Number/Check/Country"');
       }
 
       // Extract Room Number - capture multiple room numbers (comma-separated like "502, 506")

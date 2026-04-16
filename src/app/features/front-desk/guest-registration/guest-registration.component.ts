@@ -779,34 +779,57 @@ export class GuestRegistrationComponent implements OnInit {
         };
         this.guestInfoForm.patchValue(guestInfo);
 
-        // Auto-fill reservation form
-        const firstReservation = {
-          roomType: preFilledData.roomType || '', 
-          roomNumber: preFilledData.roomNumber || '',
-          checkInDate: this.parseDate(preFilledData.checkInDate),
-          checkOutDate: this.parseDate(preFilledData.checkOutDate),
-          checkInTime: preFilledData.checkInTime || '14:00',
-          checkOutTime: preFilledData.checkOutTime || '11:00',
-          accompanyingGuests: preFilledData.accompanyingGuests || [],
-        };
+        // Auto-fill reservation form - handle multiple rooms from PDF
+        const roomTypesArray = preFilledData.roomType ? 
+          preFilledData.roomType.split(',').map((r: string) => r.trim()).filter((r: string) => r) : 
+          [''];
+        const roomNumbersArray = preFilledData.roomNumber ? 
+          preFilledData.roomNumber.split(',').map((r: string) => r.trim()).filter((r: string) => r) : 
+          [''];
         
-        console.log('Reservation to patch:', firstReservation);
-        this.reservations.at(0).patchValue(firstReservation);
+        // Create separate reservations for each room
+        const numRooms = Math.max(roomTypesArray.length, roomNumbersArray.length);
+        console.log(`📋 Creating ${numRooms} reservations from PDF extract`);
+        console.log('Room Types:', roomTypesArray);
+        console.log('Room Numbers:', roomNumbersArray);
         
-        // If there are accompanying guests, add them
-        if (preFilledData.accompanyingGuests && preFilledData.accompanyingGuests.length > 0) {
-          const aguestsForm = this.getAccompanyingGuests(0);
-          preFilledData.accompanyingGuests.forEach((guest: any) => {
-            aguestsForm.push(
-              this.fb.group({
-                firstName: [guest.firstName || '', Validators.required],
-                lastName: [guest.lastName || '', Validators.required],
-                middleName: [guest.middleName || ''],
-                validIdPresented: [guest.validIdPresented || false],
-                signature: [''],
-              })
-            );
-          });
+        for (let i = 0; i < numRooms; i++) {
+          const reservation = {
+            roomType: roomTypesArray[i] || '',
+            roomNumber: roomNumbersArray[i] || '',
+            checkInDate: this.parseDate(preFilledData.checkInDate),
+            checkOutDate: this.parseDate(preFilledData.checkOutDate),
+            checkInTime: preFilledData.checkInTime || '14:00',
+            checkOutTime: preFilledData.checkOutTime || '11:00',
+            accompanyingGuests: i === 0 ? (preFilledData.accompanyingGuests || []) : [], // Only add accompanying guests to first reservation
+          };
+          
+          console.log(`✅ Reservation ${i}: Room Type = "${reservation.roomType}", Room Number = "${reservation.roomNumber}"`);
+          
+          if (i === 0) {
+            // Update the first reservation that already exists
+            this.reservations.at(0).patchValue(reservation);
+          } else {
+            // Add additional reservations
+            this.reservations.push(this.createReservationGroup());
+            this.reservations.at(i).patchValue(reservation);
+          }
+          
+          // If there are accompanying guests and this is the first reservation, add them
+          if (i === 0 && preFilledData.accompanyingGuests && preFilledData.accompanyingGuests.length > 0) {
+            const aguestsForm = this.getAccompanyingGuests(0);
+            preFilledData.accompanyingGuests.forEach((guest: any) => {
+              aguestsForm.push(
+                this.fb.group({
+                  firstName: [guest.firstName || '', Validators.required],
+                  lastName: [guest.lastName || '', Validators.required],
+                  middleName: [guest.middleName || ''],
+                  validIdPresented: [guest.validIdPresented || false],
+                  signature: [''],
+                })
+              );
+            });
+          }
         }
 
         // Auto-check all policies (user can modify if needed)

@@ -80,7 +80,7 @@ import html2pdf from 'html2pdf.js';
                 <span class="label">Reservation Number</span>
                 <span class="value">{{ reservation.reservationNumber }}</span>
               </div>
-              <div class="info-cell">
+              <div class="info-cell room-type-cell">
                 <span class="label">Room Type</span>
                 <span class="value">{{ getRoomTypeName(reservation.roomType, ri) }}</span>
               </div>
@@ -399,6 +399,13 @@ import html2pdf from 'html2pdf.js';
       color: #111;
     }
 
+    /* Room Type - smaller font to fit long names */
+    .room-type-cell .value {
+      font-size: 10px;
+      line-height: 1.3;
+      word-break: break-word;
+    }
+
     .divider {
       border-top: 2px solid #333;
       margin: 16px 0;
@@ -531,8 +538,19 @@ import html2pdf from 'html2pdf.js';
 
     .page-break {
       page-break-before: always;
+      page-break-after: avoid;
       margin: 32px 0;
       border-top: 2px dashed #ccc;
+      display: block;
+      clear: both;
+    }
+
+    /* Ensure pdf-page is a block-level element for html2pdf */
+    .pdf-page {
+      page-break-after: always;
+      page-break-inside: avoid;
+      margin: 0;
+      padding: 0;
     }
 
     /* ============ Print Styles ============ */
@@ -655,23 +673,27 @@ export class RegistrationPdfComponent implements OnInit {
       return '—';
     }
     
-    // Handle new backend format (full object with name property)
-    if (typeof roomType === 'object' && roomType.name) {
-      return this.normalizeRoomTypeName(roomType.name) || '—';
+    // Handle new backend format (full object with name and description properties)
+    if (typeof roomType === 'object') {
+      // Priority: name > description > other properties
+      if (roomType.name && typeof roomType.name === 'string') {
+        console.log(`📝 Using name for room type: ${roomType.name}`);
+        return this.normalizeRoomTypeName(roomType.name) || '—';
+      }
+      if (roomType.description && typeof roomType.description === 'string') {
+        console.log(`📝 Using description for room type: ${roomType.description}`);
+        return this.normalizeRoomTypeName(roomType.description) || '—';
+      }
+      // Handle other object properties as fallback
+      const fallback = roomType.roomType || roomType.type || roomType.title;
+      if (fallback && typeof fallback === 'string') {
+        return this.normalizeRoomTypeName(fallback) || '—';
+      }
     }
     
     // Handle string type (from frontend/PDF)
     if (typeof roomType === 'string') {
       return this.normalizeRoomTypeName(roomType) || '—';
-    }
-    
-    // Handle other object properties as fallback
-    if (typeof roomType === 'object') {
-      const fallback = roomType.roomType || roomType.type || roomType.title;
-      if (fallback && typeof fallback === 'string') {
-        return this.normalizeRoomTypeName(fallback) || '—';
-      }
-      return fallback || '—';
     }
     
     return '—';
@@ -687,8 +709,8 @@ export class RegistrationPdfComponent implements OnInit {
   }
 
   private generateAndSavePdf(guest: Guest): void {
-    // Give browser enough time to fully render all interpolations including getRoomTypeName()
-    // Use requestAnimationFrame for proper rendering sync
+    // Give browser enough time to fully render all pages and interpolations including getRoomTypeName()
+    // Use requestAnimationFrame for proper rendering sync, then additional timeout for multi-page rendering
     requestAnimationFrame(() => {
       setTimeout(() => {
         const pdfContent = document.getElementById('pdfContent');
@@ -698,10 +720,21 @@ export class RegistrationPdfComponent implements OnInit {
         }
 
         console.log('📄 Generating PDF - checking rendered content:');
-        const roomTypeElements = pdfContent.querySelectorAll('[class*="Room Type"]');
-        roomTypeElements.forEach(el => {
-          console.log('  Room Type element:', el.textContent);
+        console.log('📊 Total reservations found:', guest.reservations?.length || 0);
+        
+        // Check all reservation sections rendered
+        const reservationSections = pdfContent.querySelectorAll('[class*="info-grid"]');
+        console.log('📋 Reservation info-grid sections found:', reservationSections.length);
+        
+        const roomTypeElements = pdfContent.querySelectorAll('[class*="room-type-cell"] .value');
+        console.log('📋 Room Type elements found:', roomTypeElements.length);
+        roomTypeElements.forEach((el, idx) => {
+          console.log(`  Reservation ${idx + 1} Room Type:`, el.textContent?.trim());
         });
+        
+        // Check page-breaks
+        const pageBreaks = pdfContent.querySelectorAll('.page-break');
+        console.log('📄 Page-breaks found:', pageBreaks.length);
 
         const clonedContent = pdfContent.cloneNode(true) as HTMLElement;
         
@@ -714,7 +747,7 @@ export class RegistrationPdfComponent implements OnInit {
         const options: any = {
           margin: [5, 5, 5, 5],
           image: { type: 'jpeg' as const, quality: 0.98 },
-          html2canvas: { scale: 2 },
+          html2canvas: { scale: 2, allowTaint: true, useCORS: true },
           jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' }
         };
 
