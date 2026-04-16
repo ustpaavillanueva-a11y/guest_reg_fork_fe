@@ -94,7 +94,7 @@ Chart.register(LinearScale, CategoryScale, BarController, BarElement, Legend, To
             <td mat-cell *matCellDef="let guest">{{ guest.lastName }}, {{ guest.firstName }}</td>
           </ng-container>
 
-          
+
           <ng-container matColumnDef="phone">
             <th mat-header-cell *matHeaderCellDef>Phone</th>
             <td mat-cell *matCellDef="let guest">{{ guest.phoneNumber || '-' }}</td>
@@ -223,7 +223,7 @@ export class DashboardComponent implements OnInit {
   stats = signal<{ label: string; value: number; icon: string; color: string }[]>([]);
   recentGuests = signal<Guest[]>([]);
   loadingGuestId = signal<string | null>(null);
-  displayedColumns = ['name', 'reservationNumber', 'phone', 'country', 'registeredBy', 'date', 'actions'];
+  displayedColumns = ['reservationNumber', 'name', 'phone', 'country', 'registeredBy', 'date', 'actions'];
   
   monthlyChartData: any;
   monthlyChartOptions: ChartConfiguration['options'];
