@@ -133,7 +133,7 @@ export class SignaturePadComponent implements AfterViewInit, OnDestroy {
     this.resizeCanvas();
     
     this.ctx.strokeStyle = '#000';
-    this.ctx.lineWidth = 2;
+    this.ctx.lineWidth = 1;
     this.ctx.lineCap = 'round';
 
     const getCoordinates = (e: PointerEvent) => {
@@ -229,7 +229,7 @@ export class SignaturePadComponent implements AfterViewInit, OnDestroy {
     
     // Restore context settings after resize
     this.ctx.strokeStyle = '#000';
-    this.ctx.lineWidth = 2;
+    this.ctx.lineWidth = 1;
     this.ctx.lineCap = 'round';
     
     // Restore the saved image after resizing

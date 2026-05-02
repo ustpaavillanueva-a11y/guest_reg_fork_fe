@@ -1231,6 +1231,22 @@ export class GuestRegistrationComponent implements OnInit {
                 <td style="width: 50%; padding: 8px 0;"><strong>Remarks:</strong> ${data.agreement.remarks || 'None'}</td>
               </tr>
             </table>
+
+            <!-- Guest Signature -->
+            <div style="margin-top: 20px; padding: 15px; background: #f9f9f9; border-radius: 5px;">
+              <p style="margin: 0 0 10px 0; font-weight: bold; color: #1a1a2e;">Guest Signature:</p>
+              ${data.guestSignature ? `
+                <img src="${data.guestSignature}" style="max-width: 300px; max-height: 150px; border: 1px solid #ddd; border-radius: 4px;" alt="Guest Signature" />
+              ` : '<p style="color: #999; font-style: italic;">No signature provided</p>'}
+            </div>
+
+            <!-- Front Desk Signature -->
+            <div style="margin-top: 15px; padding: 15px; background: #f9f9f9; border-radius: 5px;">
+              <p style="margin: 0 0 10px 0; font-weight: bold; color: #1a1a2e;">Front Desk Officer Signature:</p>
+              ${data.frontDeskSignature ? `
+                <img src="${data.frontDeskSignature}" style="max-width: 300px; max-height: 150px; border: 1px solid #ddd; border-radius: 4px;" alt="Front Desk Signature" />
+              ` : '<p style="color: #999; font-style: italic;">No signature provided</p>'}
+            </div>
           </div>
 
           <!-- Footer -->
