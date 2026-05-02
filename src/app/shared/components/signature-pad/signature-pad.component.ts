@@ -15,7 +15,7 @@ import { MatIconModule } from '@angular/material/icon';
   template: `
     <div class="signature-wrapper" [class.has-signature]="hasSigned">
       <div class="canvas-area" [class.fullscreen]="fullscreen">
-        <canvas #canvas class="signature-canvas"></canvas>
+        <canvas #canvas class="signature-canvas" width="600" height="180"></canvas>
         @if (!hasSigned) {
           <div class="placeholder">
             <mat-icon>draw</mat-icon>
@@ -47,16 +47,18 @@ import { MatIconModule } from '@angular/material/icon';
     }
     .canvas-area {
       position: relative;
-      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: white;
     }
     .signature-canvas {
       display: block;
-      width: 100%;
-      height: 180px;
       cursor: crosshair;
       background: white;
       touch-action: none;
-      transition: all 0.3s;
+      border: 1px solid #eee;
+      max-width: 100%;
     }
     .canvas-area.fullscreen {
       position: fixed;
@@ -73,10 +75,7 @@ import { MatIconModule } from '@angular/material/icon';
       border-radius: 0;
     }
     .canvas-area.fullscreen .signature-canvas {
-      width: 90vw;
-      height: 80vh;
-      max-width: 1200px;
-      max-height: 90vh;
+      display: block;
       box-shadow: 0 2px 24px #0008;
       border-radius: 8px;
     }
@@ -128,23 +127,36 @@ export class SignaturePadComponent implements AfterViewInit, OnDestroy {
   private boundHandlers: (() => void)[] = [];
 
   ngAfterViewInit(): void {
-    this.resizeCanvas();
     const canvas = this.canvasRef.nativeElement;
     this.ctx = canvas.getContext('2d')!;
-
+    
+    this.resizeCanvas();
+    
     this.ctx.strokeStyle = '#000';
     this.ctx.lineWidth = 2;
     this.ctx.lineCap = 'round';
 
+    const getCoordinates = (e: PointerEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+      };
+    };
+
     const onPointerDown = (e: PointerEvent) => {
+      e.preventDefault();
       this.drawing = true;
+      const coords = getCoordinates(e);
       this.ctx.beginPath();
-      this.ctx.moveTo(e.offsetX, e.offsetY);
+      this.ctx.moveTo(coords.x, coords.y);
     };
 
     const onPointerMove = (e: PointerEvent) => {
       if (!this.drawing) return;
-      this.ctx.lineTo(e.offsetX, e.offsetY);
+      e.preventDefault();
+      const coords = getCoordinates(e);
+      this.ctx.lineTo(coords.x, coords.y);
       this.ctx.stroke();
     };
 
@@ -187,45 +199,52 @@ export class SignaturePadComponent implements AfterViewInit, OnDestroy {
     this._pendingImage = new window.Image();
     this._pendingImage.src = dataUrl;
     this.fullscreen = !this.fullscreen;
-    setTimeout(() => this.resizeCanvas(true), 0);
+    setTimeout(() => this.resizeCanvas(), 0);
   }
 
-  private resizeCanvas(restoreImage = false): void {
+  private resizeCanvas(): void {
     const canvas = this.canvasRef?.nativeElement;
-    if (!canvas) return;
+    if (!canvas || !this.ctx) return;
+    
     let width: number, height: number;
     if (this.fullscreen) {
-      width = window.innerWidth * 0.9;
-      height = window.innerHeight * 0.8;
+      width = Math.floor(window.innerWidth * 0.9);
+      height = Math.floor(window.innerHeight * 0.8);
     } else {
       const rect = canvas.parentElement?.getBoundingClientRect();
-      width = rect?.width || 600;
+      width = Math.floor(rect?.width || 600);
       height = 180;
     }
-    // Save current image if not already saved
-    if (!this._pendingImage) {
+    
+    // Save current image before resizing
+    if (canvas.width > 0 && canvas.height > 0) {
       const dataUrl = canvas.toDataURL('image/png');
       this._pendingImage = new window.Image();
       this._pendingImage.src = dataUrl;
     }
+    
+    // Set canvas attributes (this clears the canvas)
     canvas.width = width;
     canvas.height = height;
+    
+    // Restore context settings after resize
+    this.ctx.strokeStyle = '#000';
+    this.ctx.lineWidth = 2;
+    this.ctx.lineCap = 'round';
+    
     // Restore the saved image after resizing
     if (this._pendingImage) {
       if (this._pendingImage.complete) {
-        this.ctx.drawImage(this._pendingImage, 0, 0, width, height);
+        this.ctx.drawImage(this._pendingImage, 0, 0);
         this._pendingImage = null;
       } else {
         const img = this._pendingImage;
-        const restoreAndEnable = () => {
-          this.ctx.drawImage(img, 0, 0, width, height);
+        img.onload = () => {
+          this.ctx.drawImage(img, 0, 0);
           this._pendingImage = null;
           img.onload = null;
         };
-        img.onload = restoreAndEnable;
       }
-    } else {
-      this.redraw();
     }
   }
 
