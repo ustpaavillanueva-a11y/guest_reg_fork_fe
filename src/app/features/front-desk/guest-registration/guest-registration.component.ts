@@ -22,7 +22,7 @@ import { GuestService } from '../../../core/services/guest.service';
 import { RoomTypeService } from '../../../core/services/room-type.service';
 import { HotelSettingsService } from '../../../core/services/hotel-settings.service';
 import { AuthService } from '../../../core/services/auth.service';
-import { RoomType, HotelSettings } from '../../../core/models';
+import { RoomType, HotelSettings, PolicyTemplate } from '../../../core/models';
 
 @Component({
   selector: 'app-guest-registration',
@@ -157,8 +157,31 @@ import { RoomType, HotelSettings } from '../../../core/models';
                   <h3>Policies Acknowledged</h3>
                 </div>
                 <p class="acknowledgment">✓ All hotel policies have been acknowledged and accepted by the guest.</p>
+
+                @if (policies().length > 0) {
+                  @for (category of policyCategories(); track category.key) {
+                    @if (category.items.length > 0) {
+                      <div class="policy-category-block">
+                        <div class="policy-category-title">
+                          <mat-icon>{{ category.icon }}</mat-icon>
+                          <span>{{ category.label }}</span>
+                        </div>
+                        <ul class="policy-items-list">
+                          @for (policy of category.items; track policy.id) {
+                            <li>{{ policy.content }}</li>
+                          }
+                        </ul>
+                      </div>
+                    }
+                  }
+                } @else {
+                  <p class="policy-loading">Loading policies...</p>
+                }
               </mat-card-content>
             </mat-card>
+
+            <!-- Policies Acknowledged (inside Accompanying Guests Section) -->
+           
 
             <div class="step-nav">
               <span></span>
@@ -453,11 +476,51 @@ import { RoomType, HotelSettings } from '../../../core/models';
       align-self: flex-start;
       border-style: dashed !important;
     }
+    .optional-badge {
+      font-size: 12px;
+      font-weight: 400;
+      color: #999;
+      margin-left: 4px;
+    }
 
     /* ============ Policies ============ */
     .policy-card {
       border-left: 4px solid #1a1a2e !important;
     }
+      .policy-category-block {
+        margin-top: 16px;
+      }
+      .policy-category-title {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-weight: 600;
+        font-size: 14px;
+        color: #1a1a2e;
+        margin-bottom: 6px;
+      }
+      .policy-category-title mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+        color: #C41E3A;
+      }
+      .policy-items-list {
+        margin: 0 0 4px 24px;
+        padding: 0;
+        list-style: disc;
+      }
+      .policy-items-list li {
+        font-size: 13px;
+        color: #444;
+        line-height: 1.6;
+        margin-bottom: 2px;
+      }
+      .policy-loading {
+        color: #999;
+        font-size: 13px;
+        margin-top: 8px;
+      }
     .policy-title mat-icon {
       color: #1a1a2e;
     }
@@ -641,6 +704,13 @@ import { RoomType, HotelSettings } from '../../../core/models';
 export class GuestRegistrationComponent implements OnInit {
   roomTypes = signal<RoomType[]>([]);
   hotelSettings = signal<HotelSettings | null>(null);
+  policies = signal<PolicyTemplate[]>([]);
+
+  policyCategories = () => [
+    { key: 'housekeeping', label: 'Housekeeping Policies', icon: 'cleaning_services', items: this.policies().filter(p => p.category === 'housekeeping') },
+    { key: 'hotel', label: 'Hotel Policies', icon: 'hotel', items: this.policies().filter(p => p.category === 'hotel') },
+    { key: 'data_privacy', label: 'Data Privacy Policy', icon: 'privacy_tip', items: this.policies().filter(p => p.category === 'data_privacy') },
+  ];
   submitting = signal(false);
   today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -745,6 +815,16 @@ export class GuestRegistrationComponent implements OnInit {
         .subscribe((settings) => {
           if (settings) this.hotelSettings.set(settings);
         });
+
+        // Load active policies
+        this.hotelSettingsService.getActivePolicies()
+          .pipe(
+            catchError((error) => {
+              console.error('Failed to load policies:', error);
+              return of([]);
+            })
+          )
+          .subscribe((pols) => this.policies.set(pols));
 
       const user = this.authService.user();
       if (user) {

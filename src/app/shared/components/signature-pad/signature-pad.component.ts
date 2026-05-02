@@ -14,7 +14,7 @@ import { MatIconModule } from '@angular/material/icon';
   imports: [MatButtonModule, MatIconModule],
   template: `
     <div class="signature-wrapper" [class.has-signature]="hasSigned">
-      <div class="canvas-area">
+      <div class="canvas-area" [class.fullscreen]="fullscreen">
         <canvas #canvas class="signature-canvas"></canvas>
         @if (!hasSigned) {
           <div class="placeholder">
@@ -22,6 +22,9 @@ import { MatIconModule } from '@angular/material/icon';
             <span>Sign here</span>
           </div>
         }
+        <button mat-icon-button class="fullscreen-btn" type="button" (click)="toggleFullscreen()" [attr.aria-label]="fullscreen ? 'Exit Fullscreen' : 'Fullscreen'">
+          <mat-icon>{{ fullscreen ? 'fullscreen_exit' : 'fullscreen' }}</mat-icon>
+        </button>
       </div>
       <div class="sig-actions">
         <button mat-stroked-button type="button" (click)="clear()" [disabled]="!hasSigned">
@@ -44,6 +47,7 @@ import { MatIconModule } from '@angular/material/icon';
     }
     .canvas-area {
       position: relative;
+      transition: all 0.3s;
     }
     .signature-canvas {
       display: block;
@@ -52,6 +56,38 @@ import { MatIconModule } from '@angular/material/icon';
       cursor: crosshair;
       background: white;
       touch-action: none;
+      transition: all 0.3s;
+    }
+    .canvas-area.fullscreen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 10000;
+      background: rgba(0,0,0,0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0;
+      border-radius: 0;
+    }
+    .canvas-area.fullscreen .signature-canvas {
+      width: 90vw;
+      height: 80vh;
+      max-width: 1200px;
+      max-height: 90vh;
+      box-shadow: 0 2px 24px #0008;
+      border-radius: 8px;
+    }
+    .fullscreen-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      z-index: 2;
+      background: rgba(255,255,255,0.8);
+      border-radius: 50%;
+      box-shadow: 0 1px 4px #0002;
     }
     .placeholder {
       position: absolute;
@@ -85,18 +121,16 @@ export class SignaturePadComponent implements AfterViewInit, OnDestroy {
   @ViewChild('canvas') canvasRef!: ElementRef<HTMLCanvasElement>;
   signatureChange = output<string>();
   hasSigned = false;
+  fullscreen = false;
 
   private ctx!: CanvasRenderingContext2D;
   private drawing = false;
   private boundHandlers: (() => void)[] = [];
 
   ngAfterViewInit(): void {
+    this.resizeCanvas();
     const canvas = this.canvasRef.nativeElement;
     this.ctx = canvas.getContext('2d')!;
-
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width;
-    canvas.height = rect.height;
 
     this.ctx.strokeStyle = '#000';
     this.ctx.lineWidth = 2;
@@ -142,6 +176,63 @@ export class SignaturePadComponent implements AfterViewInit, OnDestroy {
     this.ctx.clearRect(0, 0, canvas.width, canvas.height);
     this.hasSigned = false;
     this.signatureChange.emit('');
+  }
+
+  private _pendingImage: HTMLImageElement | null = null;
+
+  toggleFullscreen(): void {
+    // Save current drawing as image before resizing
+    const canvas = this.canvasRef.nativeElement;
+    const dataUrl = canvas.toDataURL('image/png');
+    this._pendingImage = new window.Image();
+    this._pendingImage.src = dataUrl;
+    this.fullscreen = !this.fullscreen;
+    setTimeout(() => this.resizeCanvas(true), 0);
+  }
+
+  private resizeCanvas(restoreImage = false): void {
+    const canvas = this.canvasRef?.nativeElement;
+    if (!canvas) return;
+    let width: number, height: number;
+    if (this.fullscreen) {
+      width = window.innerWidth * 0.9;
+      height = window.innerHeight * 0.8;
+    } else {
+      const rect = canvas.parentElement?.getBoundingClientRect();
+      width = rect?.width || 600;
+      height = 180;
+    }
+    // Save current image if not already saved
+    if (!this._pendingImage) {
+      const dataUrl = canvas.toDataURL('image/png');
+      this._pendingImage = new window.Image();
+      this._pendingImage.src = dataUrl;
+    }
+    canvas.width = width;
+    canvas.height = height;
+    // Restore the saved image after resizing
+    if (this._pendingImage) {
+      if (this._pendingImage.complete) {
+        this.ctx.drawImage(this._pendingImage, 0, 0, width, height);
+        this._pendingImage = null;
+      } else {
+        const img = this._pendingImage;
+        const restoreAndEnable = () => {
+          this.ctx.drawImage(img, 0, 0, width, height);
+          this._pendingImage = null;
+          img.onload = null;
+        };
+        img.onload = restoreAndEnable;
+      }
+    } else {
+      this.redraw();
+    }
+  }
+
+  private redraw(): void {
+    if (this.ctx) {
+      this.ctx.clearRect(0, 0, this.canvasRef.nativeElement.width, this.canvasRef.nativeElement.height);
+    }
   }
 
   private emitSignature(): void {

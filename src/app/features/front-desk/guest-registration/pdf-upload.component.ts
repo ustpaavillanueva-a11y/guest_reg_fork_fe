@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, computed, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
@@ -13,6 +13,10 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatListModule } from '@angular/material/list';
 import { PdfExtractorService, ExtractedGuestData } from '../../../core/services/pdf-extractor.service';
+import { HotelSettingsService } from '../../../core/services/hotel-settings.service';
+import { PolicyTemplate } from '../../../core/models';
+import { catchError } from 'rxjs/operators';
+import { of } from 'rxjs';
 
 @Component({
   selector: 'app-pdf-upload',
@@ -224,7 +228,7 @@ import { PdfExtractorService, ExtractedGuestData } from '../../../core/services/
 
                 <div class="section-title">
                   <mat-icon>group</mat-icon>
-                  <h3>Accompanying Guests (Optional)</h3>
+                  <h3>Accompanying Guests <span class="optional-badge">(Optional)</span></h3>
                 </div>
 
                 @if (editForm.get('accompanyingGuests')?.value?.length > 0) {
@@ -442,6 +446,48 @@ import { PdfExtractorService, ExtractedGuestData } from '../../../core/services/
         text-align: center;
         padding: 16px;
       }
+
+      .policy-category-block {
+        margin-bottom: 16px;
+        padding: 12px;
+        background-color: #f5f5f5;
+        border-radius: 4px;
+      }
+
+      .policy-category-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
+        color: #C41E3A;
+        font-weight: 600;
+
+        mat-icon {
+          font-size: 18px;
+          width: 18px;
+          height: 18px;
+        }
+      }
+
+      .policy-items-list {
+        list-style-position: inside;
+        margin: 0;
+        padding-left: 16px;
+        font-size: 13px;
+        color: #333;
+
+        li {
+          margin-bottom: 6px;
+          line-height: 1.4;
+        }
+      }
+
+      .policy-loading {
+        color: #999;
+        font-style: italic;
+        text-align: center;
+        padding: 16px;
+      }
     }
 
     mat-card-actions {
@@ -450,20 +496,36 @@ import { PdfExtractorService, ExtractedGuestData } from '../../../core/services/
     }
   `,
 })
-export class PdfUploadComponent {
+export class PdfUploadComponent implements OnInit {
   extractedData = signal<ExtractedGuestData | null>(null);
   editForm!: FormGroup;
   isLoading = signal(false);
   isDragging = signal(false);
   isConfirmed = signal(false);
+  policies = signal<PolicyTemplate[]>([]);
+
+  policyCategories = () => [
+    { key: 'housekeeping', label: 'Housekeeping Policies', icon: 'cleaning_services', items: this.policies().filter(p => p.category === 'housekeeping') },
+    { key: 'hotel', label: 'Hotel Policies', icon: 'hotel', items: this.policies().filter(p => p.category === 'hotel') },
+    { key: 'data_privacy', label: 'Data Privacy Policy', icon: 'privacy_tip', items: this.policies().filter(p => p.category === 'data_privacy') },
+  ];
 
   constructor(
     private pdfExtractor: PdfExtractorService,
     private formBuilder: FormBuilder,
     private router: Router,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private hotelSettingsService: HotelSettingsService
   ) {
     this.initializeForm();
+  }
+
+  ngOnInit(): void {
+    this.hotelSettingsService.getActivePolicies().pipe(
+      catchError(() => of([]))
+    ).subscribe(policies => {
+      this.policies.set(policies);
+    });
   }
 
   private initializeForm(): void {
