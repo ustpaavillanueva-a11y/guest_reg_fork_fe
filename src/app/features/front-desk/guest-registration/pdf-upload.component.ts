@@ -1,4 +1,4 @@
-import { Component, signal, computed, OnInit } from '@angular/core';
+import { Component, signal, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
@@ -227,21 +227,28 @@ import { of } from 'rxjs';
                 <mat-divider></mat-divider>
 
                 <div class="section-title">
-                  <mat-icon>group</mat-icon>
-                  <h3>Accompanying Guests <span class="optional-badge">(Optional)</span></h3>
+                  <mat-icon>gavel</mat-icon>
+                  <h3>Policies Acknowledged</h3>
                 </div>
 
-                @if (editForm.get('accompanyingGuests')?.value?.length > 0) {
-                  <mat-list>
-                    @for (guest of editForm.get('accompanyingGuests')?.value; track $index; let i = $index) {
-                      <mat-list-item>
-                        <span matListItemTitle>{{ guest.firstName }} {{ guest.lastName }}</span>
-                        <span matListItemLine>Guest #{{ i + 1 }}</span>
-                      </mat-list-item>
+                @if (policies().length > 0) {
+                  @for (category of policyCategories(); track category.key) {
+                    @if (category.items.length > 0) {
+                      <div class="policy-category-block">
+                        <div class="policy-category-title">
+                          <mat-icon>{{ category.icon }}</mat-icon>
+                          <span>{{ category.label }}</span>
+                        </div>
+                        <ul class="policy-items-list">
+                          @for (policy of category.items; track policy.id) {
+                            <li>{{ policy.content }}</li>
+                          }
+                        </ul>
+                      </div>
                     }
-                  </mat-list>
+                  }
                 } @else {
-                  <p class="no-companions">No accompanying guests extracted from PDF</p>
+                  <p class="policy-loading">Loading policies...</p>
                 }
               </form>
             </mat-card-content>

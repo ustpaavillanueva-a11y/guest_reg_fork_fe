@@ -149,40 +149,6 @@ import { RoomType, HotelSettings, PolicyTemplate } from '../../../core/models';
               </mat-card-content>
             </mat-card>
 
-            <!-- Policies Summary -->
-            <mat-card class="form-card">
-              <mat-card-content>
-                <div class="section-title">
-                  <mat-icon>gavel</mat-icon>
-                  <h3>Policies Acknowledged</h3>
-                </div>
-                <p class="acknowledgment">✓ All hotel policies have been acknowledged and accepted by the guest.</p>
-
-                @if (policies().length > 0) {
-                  @for (category of policyCategories(); track category.key) {
-                    @if (category.items.length > 0) {
-                      <div class="policy-category-block">
-                        <div class="policy-category-title">
-                          <mat-icon>{{ category.icon }}</mat-icon>
-                          <span>{{ category.label }}</span>
-                        </div>
-                        <ul class="policy-items-list">
-                          @for (policy of category.items; track policy.id) {
-                            <li>{{ policy.content }}</li>
-                          }
-                        </ul>
-                      </div>
-                    }
-                  }
-                } @else {
-                  <p class="policy-loading">Loading policies...</p>
-                }
-              </mat-card-content>
-            </mat-card>
-
-            <!-- Policies Acknowledged (inside Accompanying Guests Section) -->
-           
-
             <div class="step-nav">
               <span></span>
               <button mat-flat-button color="primary" matStepperNext class="nav-btn">
