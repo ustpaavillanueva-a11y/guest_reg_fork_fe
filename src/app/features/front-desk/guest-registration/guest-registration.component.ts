@@ -985,21 +985,29 @@ export class GuestRegistrationComponent implements OnInit {
     return `${date}${random}`; // "2026041312345"
   }
 
-  allPoliciesChecked(): boolean {
-    const policies = this.policiesForm.get('policySmoking')?.value &&
-      this.policiesForm.get('policyCorkage')?.value &&
-      this.policiesForm.get('policyNoPets')?.value &&
-      this.policiesForm.get('policyNegligence')?.value &&
-      this.policiesForm.get('policyMinors')?.value &&
-      this.policiesForm.get('policyParking')?.value &&
-      this.policiesForm.get('policySafe')?.value &&
-      this.policiesForm.get('policyForceMajeure')?.value;
-    return !!policies;
+  private static readonly POLICY_CODE_TO_CONTROL: Record<string, string> = {
+    housekeeping_1: 'policyHousekeeping1',
+    housekeeping_2: 'policyHousekeeping2',
+    smoking: 'policySmoking',
+    corkage: 'policyCorkage',
+    no_pets: 'policyNoPets',
+    negligence: 'policyNegligence',
+    minors: 'policyMinors',
+    parking: 'policyParking',
+    safe: 'policySafe',
+    force_majeure: 'policyForceMajeure',
+    data_privacy: 'policyDataPrivacy',
+  };
+
+  policyControlName(code: string): string {
+    return GuestRegistrationComponent.POLICY_CODE_TO_CONTROL[code] ?? code;
   }
 
   selectAllPolicies(event: any): void {
     const isChecked = event.checked;
     this.policiesForm.patchValue({
+      policyHousekeeping1: isChecked,
+      policyHousekeeping2: isChecked,
       policySmoking: isChecked,
       policyCorkage: isChecked,
       policyNoPets: isChecked,
@@ -1008,6 +1016,7 @@ export class GuestRegistrationComponent implements OnInit {
       policyParking: isChecked,
       policySafe: isChecked,
       policyForceMajeure: isChecked,
+      policyDataPrivacy: isChecked,
     });
   }
 
@@ -1024,8 +1033,8 @@ export class GuestRegistrationComponent implements OnInit {
   }
 
   onStepChange(event: any): void {
-    // Step 3 is the Agreement & Signature step (0-indexed)
-    if (event.selectedIndex === 3 && !this.signatureForm.get('guestPrintedName')?.value) {
+    // Step 1 is the Agreement & Signature step (0-indexed: Details, Agreement)
+    if (event.selectedIndex === 1 && !this.signatureForm.get('guestPrintedName')?.value) {
       this.populateGuestName();
     }
   }
