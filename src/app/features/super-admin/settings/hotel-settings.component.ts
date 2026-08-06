@@ -58,6 +58,12 @@ import { HotelSettings } from '../../../core/models';
               </mat-form-field>
 
               <mat-form-field appearance="outline">
+                <mat-label>Total Rooms</mat-label>
+                <input matInput formControlName="totalRooms" type="number" min="0" />
+                <mat-hint>Used to compute occupancy rate in Booking Analytics</mat-hint>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
                 <mat-label>Contact Number</mat-label>
                 <input matInput formControlName="contactNumber" />
               </mat-form-field>
@@ -111,6 +117,7 @@ export class HotelSettingsComponent implements OnInit {
     defaultCheckOutTime: ['11:00'],
     smokingFee: [5000],
     corkageFeePercent: [30],
+    totalRooms: [0],
     contactNumber: [''],
     email: [''],
     address: [''],

@@ -6,6 +6,7 @@ export interface HotelSettings {
   defaultCheckOutTime: string;
   smokingFee: number;
   corkageFeePercent: number;
+  totalRooms: number;
   address?: string;
   contactNumber?: string;
   email?: string;
