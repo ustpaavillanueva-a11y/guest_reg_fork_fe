@@ -16,7 +16,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { provideNativeDateAdapter } from '@angular/material/core';
-import html2pdf from 'html2pdf.js';
+import Swal from 'sweetalert2';
 import { SignaturePadComponent } from '../../../shared/components/signature-pad/signature-pad.component';
 import { GuestService } from '../../../core/services/guest.service';
 import { RoomTypeService } from '../../../core/services/room-type.service';
@@ -1093,193 +1093,20 @@ export class GuestRegistrationComponent implements OnInit {
     this.guestService.register(payload).subscribe({
       next: (guest) => {
         this.submitting.set(false);
-        this.snackBar.open('Guest registered successfully!', 'Close', { duration: 3000 });
-        
-        // Generate PDF with all registration data
-        this.generateRegistrationPDF(payload, guest.id);
-        
-        // Navigate after small delay to allow PDF generation
-        setTimeout(() => {
+        Swal.fire({
+          icon: 'success',
+          title: 'Registered Successfully!',
+          text: 'The guest has been registered.',
+          confirmButtonColor: '#C41E3A',
+        }).then(() => {
           this.router.navigate(['/registration', guest.id]);
-        }, 500);
+        });
       },
       error: (err) => {
         this.submitting.set(false);
         this.snackBar.open(err.error?.message ?? 'Registration failed', 'Close', { duration: 5000 });
       },
     });
-  }
-
-  private getRoomTypeForPdf(roomType: any): string {
-    // Handle null/undefined
-    if (!roomType) return '—';
-    
-    // Handle object format (from backend API response)
-    if (typeof roomType === 'object' && roomType.name) {
-      return this.normalizeRoomTypeName(roomType.name) || '—';
-    }
-    
-    // Handle string format (from form or PDF extraction)
-    if (typeof roomType === 'string') {
-      return this.normalizeRoomTypeName(roomType) || '—';
-    }
-    
-    // Handle other object properties as fallback
-    if (typeof roomType === 'object') {
-      const fallback = roomType.roomType || roomType.type || roomType.title;
-      if (fallback && typeof fallback === 'string') {
-        return this.normalizeRoomTypeName(fallback) || '—';
-      }
-      return fallback || '—';
-    }
-    
-    return '—';
-  }
-
-  private normalizeRoomTypeName(name: string): string {
-    // Replace newlines with spaces and collapse multiple spaces
-    return name
-      .replace(/\n/g, ' ')      // Replace newlines with space
-      .replace(/\r/g, ' ')      // Replace carriage returns with space
-      .replace(/\s+/g, ' ')     // Collapse multiple spaces to single space
-      .trim();                   // Remove leading/trailing whitespace
-  }
-
-  private generateRegistrationPDF(data: any, guestId: string): void {
-    try {
-      const timestamp = new Date().toLocaleDateString('en-US', { 
-        year: 'numeric', 
-        month: '2-digit', 
-        day: '2-digit' 
-      }).replace(/\//g, '-');
-
-      const htmlContent = `
-        <div style="font-family: Arial, sans-serif; padding: 20px; line-height: 1.6;">
-          <!-- Header -->
-          <div style="text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 15px;">
-            <h1 style="margin: 0; color: #C41E3A;">KEKEHYU HOTEL</h1>
-            <p style="margin: 5px 0; color: #666;">Guest Registration Form</p>
-            <p style="margin: 5px 0; font-size: 12px; color: #999;">Registration ID: ${guestId}</p>
-          </div>
-
-          <!-- Guest Information -->
-          <div style="margin-bottom: 25px;">
-            <h3 style="color: #1a1a2e; border-bottom: 1px solid #C41E3A; padding-bottom: 8px;">Guest Information</h3>
-            <table style="width: 100%; border-collapse: collapse;">
-              <tr>
-                <td style="width: 50%; padding: 8px 0;"><strong>First Name:</strong> ${data.firstName}</td>
-                <td style="width: 50%; padding: 8px 0;"><strong>Last Name:</strong> ${data.lastName}</td>
-              </tr>
-              <tr>
-                <td style="width: 50%; padding: 8px 0;"><strong>Email:</strong> ${data.email}</td>
-                <td style="width: 50%; padding: 8px 0;"><strong>Phone:</strong> ${data.phoneNumber}</td>
-              </tr>
-              <tr>
-                <td style="width: 50%; padding: 8px 0;"><strong>Country:</strong> ${data.country}</td>
-                <td style="width: 50%; padding: 8px 0;"><strong>Vehicle Plate:</strong> ${data.vehiclePlateNo}</td>
-              </tr>
-            </table>
-          </div>
-
-          <!-- Room Reservations -->
-          <div style="margin-bottom: 25px;">
-            <h3 style="color: #1a1a2e; border-bottom: 1px solid #C41E3A; padding-bottom: 8px;">Room Details</h3>
-            ${data.reservations.map((res: any, idx: number) => `
-              <div style="margin-bottom: 15px; padding: 10px; background: #f5f5f5; border-radius: 5px;">
-                <p style="margin: 0 0 10px 0; font-weight: bold;">Room ${idx + 1}</p>
-                <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
-                  <tr>
-                    <td style="padding: 5px 0;"><strong>Room Number:</strong> ${res.roomNumber}</td>
-                    <td style="padding: 5px 0;"><strong>Check-in:</strong> ${res.checkInDate}</td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 5px 0;"><strong>Room Type:</strong> ${this.getRoomTypeForPdf(res.roomType)}</td>
-                    <td style="padding: 5px 0;"><strong>Check-out:</strong> ${res.checkOutDate}</td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 5px 0;"><strong>Check-in Time:</strong> ${res.checkInTime}</td>
-                    <td style="padding: 5px 0;"><strong>Check-out Time:</strong> ${res.checkOutTime}</td>
-                  </tr>
-                </table>
-                ${res.accompanyingGuests && res.accompanyingGuests.length > 0 ? `
-                  <p style="margin: 10px 0 5px 0; font-weight: bold; font-size: 13px;">Accompanying Guests:</p>
-                  <ul style="margin: 5px 0; padding-left: 20px; font-size: 13px;">
-                    ${res.accompanyingGuests.map((guest: any) => `
-                      <li>${guest.firstName} ${guest.lastName}</li>
-                    `).join('')}
-                  </ul>
-                ` : ''}
-              </div>
-            `).join('')}
-          </div>
-
-          <!-- Policies Accepted -->
-          <div style="margin-bottom: 25px;">
-            <h3 style="color: #1a1a2e; border-bottom: 1px solid #C41E3A; padding-bottom: 8px;">Policies & Agreement</h3>
-            <div style="font-size: 13px;">
-              <p><strong>✓ All Hotel Policies Acknowledged</strong></p>
-              <ul style="margin: 10px 0; padding-left: 20px;">
-                <li>Smoking Policy: ${data.agreement.policySmoking ? 'Accepted' : 'Not Accepted'}</li>
-                <li>Corkage Policy: ${data.agreement.policyCorkage ? 'Accepted' : 'Not Accepted'}</li>
-                <li>No Pets Policy: ${data.agreement.policyNoPets ? 'Accepted' : 'Not Accepted'}</li>
-                <li>Data Privacy Consent: ${data.agreement.policyDataPrivacy ? 'Accepted' : 'Not Accepted'}</li>
-              </ul>
-            </div>
-          </div>
-
-          <!-- Signatures & Front Desk -->
-          <div style="margin-bottom: 25px;">
-            <h3 style="color: #1a1a2e; border-bottom: 1px solid #C41E3A; padding-bottom: 8px;">Agreement & Signature</h3>
-            <table style="width: 100%; border-collapse: collapse;">
-              <tr>
-                <td style="width: 50%; padding: 8px 0;"><strong>Guest Printed Name:</strong> ${data.agreement.guestPrintedName}</td>
-                <td style="width: 50%; padding: 8px 0;"><strong>Date:</strong> ${data.agreement.signatureDate}</td>
-              </tr>
-              <tr>
-                <td style="width: 50%; padding: 8px 0;"><strong>Processed By:</strong> ${data.agreement.processedByName}</td>
-                <td style="width: 50%; padding: 8px 0;"><strong>Remarks:</strong> ${data.agreement.remarks || 'None'}</td>
-              </tr>
-            </table>
-
-            <!-- Guest Signature -->
-            <div style="margin-top: 20px; padding: 15px; background: #f9f9f9; border-radius: 5px;">
-              <p style="margin: 0 0 10px 0; font-weight: bold; color: #1a1a2e;">Guest Signature:</p>
-              ${data.guestSignature ? `
-                <img src="${data.guestSignature}" style="max-width: 300px; max-height: 150px; border: 1px solid #ddd; border-radius: 4px;" alt="Guest Signature" />
-              ` : '<p style="color: #999; font-style: italic;">No signature provided</p>'}
-            </div>
-
-            <!-- Front Desk Signature -->
-            <div style="margin-top: 15px; padding: 15px; background: #f9f9f9; border-radius: 5px;">
-              <p style="margin: 0 0 10px 0; font-weight: bold; color: #1a1a2e;">Front Desk Officer Signature:</p>
-              ${data.frontDeskSignature ? `
-                <img src="${data.frontDeskSignature}" style="max-width: 300px; max-height: 150px; border: 1px solid #ddd; border-radius: 4px;" alt="Front Desk Signature" />
-              ` : '<p style="color: #999; font-style: italic;">No signature provided</p>'}
-            </div>
-          </div>
-
-          <!-- Footer -->
-          <div style="text-align: center; margin-top: 30px; padding-top: 15px; border-top: 1px solid #ddd; font-size: 12px; color: #999;">
-            <p>Document Generated: ${new Date().toLocaleString()}</p>
-            <p>This is an automatically generated registration confirmation.</p>
-          </div>
-        </div>
-      `;
-
-      const opt = {
-        margin: 10,
-        filename: `Registration_${guestId}_${timestamp}.pdf`,
-        image: { type: 'png' as const },
-        html2canvas: { scale: 2 },
-        jsPDF: { orientation: 'portrait' as const, unit: 'mm' as const, format: 'a4' as const }
-      };
-
-      html2pdf().set(opt).from(htmlContent).save();
-      console.log('✅ Registration PDF generated and downloaded');
-    } catch (error) {
-      console.error('Failed to generate PDF:', error);
-      this.snackBar.open('⚠️ PDF generation failed', 'Close', { duration: 3000 });
-    }
   }
 
   private formatDate(date: any): string {
