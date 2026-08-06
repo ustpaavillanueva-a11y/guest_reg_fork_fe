@@ -1,4 +1,7 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, DestroyRef, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { merge } from 'rxjs';
+import { debounceTime } from 'rxjs/operators';
 import { MatCardModule } from '@angular/material/card';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
@@ -14,6 +17,7 @@ import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { GuestService } from '../../../core/services/guest.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { RealtimeService } from '../../../core/services/realtime.service';
 import { Guest } from '../../../core/models';
 import { GuestPdfPreviewComponent } from './guest-pdf-preview.component';
 
@@ -120,6 +124,9 @@ export class GuestListComponent implements OnInit {
   loadingGuestId = signal<string | null>(null);
   displayedColumns = ['name', 'phone', 'country', 'registeredBy', 'date', 'actions'];
 
+  private realtime = inject(RealtimeService);
+  private destroyRef = inject(DestroyRef);
+
   constructor(
     private guestService: GuestService,
     private authService: AuthService,
@@ -129,6 +136,14 @@ export class GuestListComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadGuests();
+
+    merge(
+      this.realtime.on('guest.created'),
+      this.realtime.on('guest.updated'),
+      this.realtime.on('guest.deleted'),
+    )
+      .pipe(debounceTime(300), takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.loadGuests());
   }
 
   loadGuests(): void {

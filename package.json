@@ -4,7 +4,9 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
+    "start:local": "ng serve --configuration local --host 127.0.0.1 --port 4200",
     "build": "ng build --configuration production",
+    "build:local": "ng build --configuration local",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "serve:ssr:guest_registration": "node dist/guest_registration/server/server.mjs",
@@ -31,6 +33,7 @@
     "ng2-charts": "^10.0.0",
     "pdfjs-dist": "^4.5.378",
     "rxjs": "~7.8.0",
+    "socket.io-client": "^4.8.3",
     "tslib": "^2.3.0"
   },
   "devDependencies": {

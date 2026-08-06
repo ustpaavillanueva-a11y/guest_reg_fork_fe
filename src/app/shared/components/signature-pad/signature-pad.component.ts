@@ -161,6 +161,7 @@ export class SignaturePadComponent implements AfterViewInit, OnDestroy {
     };
 
     const onPointerUp = () => {
+      if (!this.drawing) return;
       this.drawing = false;
       this.hasSigned = true;
       this.emitSignature();

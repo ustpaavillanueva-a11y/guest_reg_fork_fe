@@ -1,4 +1,7 @@
-import { Component, OnInit, signal, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, signal, ChangeDetectorRef, DestroyRef, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { merge } from 'rxjs';
+import { debounceTime } from 'rxjs/operators';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTableModule } from '@angular/material/table';
@@ -11,6 +14,7 @@ import { DatePipe } from '@angular/common';
 import { BaseChartDirective } from 'ng2-charts';
 import { ChartConfiguration, Chart, LinearScale, CategoryScale, BarController, BarElement, Legend, Tooltip } from 'chart.js';
 import { GuestService } from '../../../core/services/guest.service';
+import { RealtimeService } from '../../../core/services/realtime.service';
 import { GuestStatistics, Guest } from '../../../core/models';
 import { GuestPdfPreviewComponent } from '../guest-list/guest-pdf-preview.component';
 import { PwaInstallService } from './pwa-install.service';
@@ -228,6 +232,9 @@ export class DashboardComponent implements OnInit {
   monthlyChartData: any;
   monthlyChartOptions: ChartConfiguration['options'];
 
+  private realtime = inject(RealtimeService);
+  private destroyRef = inject(DestroyRef);
+
   constructor(
     private guestService: GuestService,
     private dialog: MatDialog,
@@ -238,12 +245,26 @@ export class DashboardComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    this.loadDashboardData();
+
+    merge(
+      this.realtime.on('guest.created'),
+      this.realtime.on('guest.updated'),
+      this.realtime.on('guest.deleted'),
+    )
+      .pipe(debounceTime(300), takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.loadDashboardData());
+  }
+
+  private loadDashboardData(): void {
     const periods = [
       { period: 'today' as const, label: 'Today', icon: 'today', color: '#C41E3A' },
       { period: 'week' as const, label: 'This Week', icon: 'date_range', color: '#1976d2' },
       { period: 'month' as const, label: 'This Month', icon: 'calendar_month', color: '#388e3c' },
       { period: 'year' as const, label: 'This Year', icon: 'calendar_today', color: '#f57c00' },
     ];
+
+    this.stats.set([]);
 
     periods.forEach((p) => {
       this.guestService.getStatistics(p.period).subscribe((data) => {
@@ -261,7 +282,7 @@ export class DashboardComponent implements OnInit {
       next: (data) => {
         const currentYear = new Date().getFullYear();
         const lastYear = currentYear - 1;
-        
+
         this.monthlyChartData = {
           labels: data.months,
           datasets: [

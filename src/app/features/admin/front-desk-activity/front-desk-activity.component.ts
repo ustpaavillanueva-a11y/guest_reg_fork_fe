@@ -1,4 +1,6 @@
-import { Component, OnInit, signal, input } from '@angular/core';
+import { Component, OnInit, signal, input, DestroyRef, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { debounceTime } from 'rxjs/operators';
 import { MatCardModule } from '@angular/material/card';
 import { MatTableModule } from '@angular/material/table';
 import { MatChipsModule } from '@angular/material/chips';
@@ -6,6 +8,7 @@ import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 import { SessionService } from '../../../core/services/session.service';
+import { RealtimeService } from '../../../core/services/realtime.service';
 import { FrontDeskActivity, StatisticsPeriod } from '../../../core/models';
 
 @Component({
@@ -74,10 +77,17 @@ export class FrontDeskActivityComponent implements OnInit {
   selectedPeriod: StatisticsPeriod = 'today';
   displayedColumns = ['name', 'totalHours', 'sessions', 'status'];
 
+  private realtime = inject(RealtimeService);
+  private destroyRef = inject(DestroyRef);
+
   constructor(private sessionService: SessionService) {}
 
   ngOnInit(): void {
     this.loadActivity();
+
+    this.realtime.on('session.changed')
+      .pipe(debounceTime(300), takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.loadActivity());
   }
 
   loadActivity(): void {
