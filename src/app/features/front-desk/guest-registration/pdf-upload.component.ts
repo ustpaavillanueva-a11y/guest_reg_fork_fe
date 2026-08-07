@@ -753,12 +753,6 @@ export class PdfUploadComponent implements OnInit {
   }
 
   private populateForm(data: ExtractedGuestData): void {
-    // Debug: Log extracted data before populating form
-    console.log('=== POPULATE FORM - EXTRACTED DATA ===');
-    console.log('Phone Number:', data.phoneNumber);
-    console.log('Room Type:', data.roomType);
-    console.log('Room Number:', data.roomNumber);
-    
     // Use room type name directly (supports multiple room types, comma-separated)
     this.editForm.patchValue({
       firstName: data.firstName,
@@ -778,9 +772,6 @@ export class PdfUploadComponent implements OnInit {
       checkOutTime: data.checkOutTime || '11:00',
       accompanyingGuests: data.accompanyingGuests || [],
     });
-    
-    // Debug: Log form value after patching
-    console.log('Form value after patch:', this.editForm.value);
   }
 
   startManualEntry(): void {
@@ -819,13 +810,7 @@ export class PdfUploadComponent implements OnInit {
       return;
     }
 
-    // Debug: Log the data being sent
     const formData = this.editForm.value;
-    console.log('=== PDF UPLOAD - SENDING DATA ===');
-    console.log('Phone Number:', formData.phoneNumber);
-    console.log('Room Type:', formData.roomType);
-    console.log('Room Number:', formData.roomNumber);
-    console.log('Full form data:', formData);
 
     // Store the extracted data in router history state and navigate to main guest registration
     this.router.navigate(

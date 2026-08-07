@@ -24,7 +24,6 @@ export class PwaInstallService {
 
     window.addEventListener('appinstalled', () => {
       this.canInstall.set(false);
-      console.log('App installed successfully');
     });
   }
 

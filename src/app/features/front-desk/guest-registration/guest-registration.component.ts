@@ -804,14 +804,7 @@ export class GuestRegistrationComponent implements OnInit {
       
       if (state?.['fromPdfUpload'] && state?.['preFilledData']) {
         const preFilledData = state['preFilledData'];
-        
-        // Debug: Log received data
-        console.log('=== PREFILL DATA RECEIVED ===');
-        console.log('Phone Number:', preFilledData.phoneNumber);
-        console.log('Room Type:', preFilledData.roomType);
-        console.log('Room Number:', preFilledData.roomNumber);
-        console.log('Full preFilledData:', preFilledData);
-        
+
         // Auto-fill guest info form
         const guestInfo = {
           firstName: preFilledData.firstName || '',
@@ -835,9 +828,6 @@ export class GuestRegistrationComponent implements OnInit {
         
         // Create separate reservations for each room
         const numRooms = Math.max(roomTypesArray.length, roomNumbersArray.length);
-        console.log(`📋 Creating ${numRooms} reservations from PDF extract`);
-        console.log('Room Types:', roomTypesArray);
-        console.log('Room Numbers:', roomNumbersArray);
         
         for (let i = 0; i < numRooms; i++) {
           const reservation = {
@@ -849,9 +839,7 @@ export class GuestRegistrationComponent implements OnInit {
             checkOutTime: preFilledData.checkOutTime || '11:00',
             accompanyingGuests: i === 0 ? (preFilledData.accompanyingGuests || []) : [], // Only add accompanying guests to first reservation
           };
-          
-          console.log(`✅ Reservation ${i}: Room Type = "${reservation.roomType}", Room Number = "${reservation.roomNumber}"`);
-          
+
           if (i === 0) {
             // Update the first reservation that already exists
             this.reservations.at(0).patchValue(reservation);

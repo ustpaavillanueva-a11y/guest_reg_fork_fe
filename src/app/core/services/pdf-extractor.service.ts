@@ -42,7 +42,6 @@ export class PdfExtractorService {
       const workerUrl = '/assets/pdf.worker.min.mjs';
       (pdfjsLib as any).GlobalWorkerOptions.workerSrc = workerUrl;
       this.workerConfigured = true;
-      console.log('PDF.js worker configured:', workerUrl);
     } catch (error) {
       console.error('Failed to setup PDF worker:', error);
     }
@@ -77,11 +76,6 @@ export class PdfExtractorService {
   }
 
   private parseExtractedText(text: string): ExtractedGuestData {
-    // Debug: log the extracted text to see what we're working with
-    console.log('=== PDF EXTRACTED TEXT ===');
-    console.log(text);
-    console.log('=== END PDF TEXT ===');
-    
     const errors: string[] = [];
     const data: ExtractedGuestData = {
       firstName: '',
@@ -118,9 +112,6 @@ export class PdfExtractorService {
       const phoneMatch = text.match(/Phone Number\s+([\+\d\s\-]+)(?=\s*(?:VEHICLE|Check|Room|Email))/i);
       if (phoneMatch) {
         data.phoneNumber = phoneMatch[1].trim().replace(/\s+/g, '');
-        console.log('Extracted Phone Number:', data.phoneNumber);
-      } else {
-        console.log('Phone Number not found in text');
       }
 
       // Stop extending a labeled field's value once the next known field label
@@ -220,13 +211,8 @@ export class PdfExtractorService {
         // Remove trailing/leading spaces and commas
         roomTypeText = roomTypeText.replace(/^[\s,]+|[\s,]+$/g, '');
         data.roomType = roomTypeText;
-        console.log('✅ Extracted All Room Type(s):', data.roomType);
-        console.log('   Found', roomTypeMatches.length, 'room type section(s), using longest match');
-        console.log('   Multiple rooms captured:', roomTypeText.includes(',') ? 'YES' : 'NO');
       } else {
         data.roomType = '';
-        console.log('⚠️ Room Type not found in text');
-        console.log('   Searched for pattern: "Room Type...Email/Room Number/Check/Country"');
       }
 
       // Extract Room Number - capture multiple room numbers (comma-separated like "502, 506")
@@ -236,10 +222,8 @@ export class PdfExtractorService {
         let roomNumbers = roomNumMatch[1].trim();
         roomNumbers = roomNumbers.replace(/\s*,\s*/g, ', ');
         data.roomNumber = roomNumbers;
-        console.log('Extracted Room Number:', data.roomNumber);
       } else {
         data.roomNumber = '';
-        console.log('Room Number not found in text');
       }
 
       // Extract Valid ID Presented
