@@ -12,8 +12,10 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatListModule } from '@angular/material/list';
+import { MatTableModule } from '@angular/material/table';
 import { PdfExtractorService, ExtractedGuestData } from '../../../core/services/pdf-extractor.service';
 import { HotelSettingsService } from '../../../core/services/hotel-settings.service';
+import { TempUploadService, TempUploadResult } from '../../../core/services/temp-upload.service';
 import { PolicyTemplate } from '../../../core/models';
 import { catchError } from 'rxjs/operators';
 import { of } from 'rxjs';
@@ -34,6 +36,7 @@ import { of } from 'rxjs';
     MatSnackBarModule,
     MatDividerModule,
     MatListModule,
+    MatTableModule,
   ],
   template: `
     <div class="pdf-upload-container">
@@ -84,6 +87,60 @@ import { of } from 'rxjs';
                   <mat-icon>edit_note</mat-icon> Enter Guest Details Manually
                 </button>
               </div>
+            </mat-card-content>
+          </mat-card>
+
+          <!-- Choose from already-uploaded PDFs -->
+          <mat-card class="temp-uploads-card">
+            <mat-card-header>
+              <mat-card-title>Or Choose from Uploaded PDFs</mat-card-title>
+              <button mat-icon-button (click)="loadTempUploads()" [disabled]="isLoadingTempUploads()" title="Refresh">
+                <mat-icon>refresh</mat-icon>
+              </button>
+            </mat-card-header>
+            <mat-card-content>
+              @if (isLoadingTempUploads()) {
+                <div class="loading-state">
+                  <mat-spinner diameter="32" />
+                </div>
+              } @else if (tempUploads().length === 0) {
+                <p class="empty-hint">No uploaded PDFs available.</p>
+              } @else {
+                <table mat-table [dataSource]="tempUploads()" class="full-width">
+                  <ng-container matColumnDef="fileName">
+                    <th mat-header-cell *matHeaderCellDef>File</th>
+                    <td mat-cell *matCellDef="let item">{{ item.fileName ?? '—' }}</td>
+                  </ng-container>
+
+                  <ng-container matColumnDef="createdAt">
+                    <th mat-header-cell *matHeaderCellDef>Uploaded</th>
+                    <td mat-cell *matCellDef="let item">
+                      {{ item.createdAt ? (item.createdAt | date: 'short') : '—' }}
+                    </td>
+                  </ng-container>
+
+                  <ng-container matColumnDef="actions">
+                    <th mat-header-cell *matHeaderCellDef></th>
+                    <td mat-cell *matCellDef="let item">
+                      <button
+                        mat-stroked-button
+                        color="primary"
+                        (click)="useUploadedPdf(item)"
+                        [disabled]="isLoading() || fetchingUploadId() === item.id"
+                      >
+                        @if (fetchingUploadId() === item.id) {
+                          <mat-spinner diameter="18" />
+                        } @else {
+                          <ng-container>Use this PDF</ng-container>
+                        }
+                      </button>
+                    </td>
+                  </ng-container>
+
+                  <tr mat-header-row *matHeaderRowDef="tempUploadColumns"></tr>
+                  <tr mat-row *matRowDef="let row; columns: tempUploadColumns"></tr>
+                </table>
+              }
             </mat-card-content>
           </mat-card>
         }
@@ -340,6 +397,26 @@ import { of } from 'rxjs';
       }
     }
 
+    .temp-uploads-card {
+      margin-top: 20px;
+
+      mat-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .empty-hint {
+        color: #666;
+        text-align: center;
+        padding: 24px 0;
+      }
+
+      .full-width {
+        width: 100%;
+      }
+    }
+
     .manual-entry-divider {
       display: flex;
       align-items: center;
@@ -539,6 +616,10 @@ export class PdfUploadComponent implements OnInit {
   isConfirmed = signal(false);
   isManualEntry = signal(false);
   policies = signal<PolicyTemplate[]>([]);
+  tempUploads = signal<TempUploadResult[]>([]);
+  isLoadingTempUploads = signal(false);
+  fetchingUploadId = signal<string | null>(null);
+  tempUploadColumns = ['fileName', 'createdAt', 'actions'];
 
   policyCategories = () => [
     { key: 'housekeeping', label: 'Housekeeping Policies', icon: 'cleaning_services', items: this.policies().filter(p => p.category === 'housekeeping') },
@@ -551,7 +632,8 @@ export class PdfUploadComponent implements OnInit {
     private formBuilder: FormBuilder,
     private router: Router,
     private snackBar: MatSnackBar,
-    private hotelSettingsService: HotelSettingsService
+    private hotelSettingsService: HotelSettingsService,
+    private tempUploadService: TempUploadService
   ) {
     this.initializeForm();
   }
@@ -561,6 +643,42 @@ export class PdfUploadComponent implements OnInit {
       catchError(() => of([]))
     ).subscribe(policies => {
       this.policies.set(policies);
+    });
+
+    this.loadTempUploads();
+  }
+
+  loadTempUploads(): void {
+    this.isLoadingTempUploads.set(true);
+    this.tempUploadService.list().subscribe({
+      next: (uploads) => {
+        this.isLoadingTempUploads.set(false);
+        this.tempUploads.set(uploads ?? []);
+      },
+      error: () => {
+        this.isLoadingTempUploads.set(false);
+        this.snackBar.open('Failed to load uploaded PDFs', 'Close', { duration: 3000 });
+      },
+    });
+  }
+
+  useUploadedPdf(item: TempUploadResult): void {
+    const fileUrl = (item.url ?? item.fileUrl) as string | undefined;
+    if (!fileUrl) {
+      this.snackBar.open('This file is no longer available', 'Close', { duration: 3000 });
+      return;
+    }
+
+    this.fetchingUploadId.set(item.id ?? null);
+    this.tempUploadService.fetchAsFile(fileUrl, item.fileName ?? 'upload.pdf').subscribe({
+      next: (file) => {
+        this.fetchingUploadId.set(null);
+        this.processFile(file);
+      },
+      error: () => {
+        this.fetchingUploadId.set(null);
+        this.snackBar.open('Failed to load the selected PDF', 'Close', { duration: 3000 });
+      },
     });
   }
 

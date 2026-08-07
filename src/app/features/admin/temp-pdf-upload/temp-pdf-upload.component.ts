@@ -1,8 +1,9 @@
-import { Component, signal } from '@angular/core';
+import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatTableModule } from '@angular/material/table';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { TempUploadService, TempUploadResult } from '../../../core/services/temp-upload.service';
@@ -10,7 +11,15 @@ import { TempUploadService, TempUploadResult } from '../../../core/services/temp
 @Component({
   selector: 'app-temp-pdf-upload',
   standalone: true,
-  imports: [CommonModule, MatCardModule, MatButtonModule, MatIconModule, MatProgressSpinnerModule, MatSnackBarModule],
+  imports: [
+    CommonModule,
+    MatCardModule,
+    MatButtonModule,
+    MatIconModule,
+    MatTableModule,
+    MatProgressSpinnerModule,
+    MatSnackBarModule,
+  ],
   template: `
     <div class="upload-container">
       <div class="upload-header">
@@ -51,18 +60,58 @@ import { TempUploadService, TempUploadResult } from '../../../core/services/temp
               <p>Uploading…</p>
             </div>
           }
+        </mat-card-content>
+      </mat-card>
 
-          @if (lastResult(); as result) {
-            <div class="result-banner">
-              <mat-icon>check_circle</mat-icon>
-              <div>
-                <strong>{{ lastFileName() }}</strong> uploaded successfully.
-                <p class="hint">{{ result.message ?? 'This file will be automatically deleted in 1 hour.' }}</p>
-                @if (result.url ?? result.fileUrl; as url) {
-                  <a [href]="url" target="_blank" rel="noopener">View uploaded file</a>
-                }
-              </div>
+      <mat-card class="list-card">
+        <mat-card-header>
+          <mat-card-title>Uploaded PDFs</mat-card-title>
+          <button mat-icon-button (click)="loadUploads()" [disabled]="isLoadingList()" title="Refresh">
+            <mat-icon>refresh</mat-icon>
+          </button>
+        </mat-card-header>
+        <mat-card-content>
+          @if (isLoadingList()) {
+            <div class="loading-state">
+              <mat-spinner diameter="32" />
             </div>
+          } @else if (uploads().length === 0) {
+            <p class="empty-hint">No files uploaded yet.</p>
+          } @else {
+            <table mat-table [dataSource]="uploads()" class="full-width">
+              <ng-container matColumnDef="fileName">
+                <th mat-header-cell *matHeaderCellDef>File</th>
+                <td mat-cell *matCellDef="let item">{{ item.fileName ?? '—' }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="createdAt">
+                <th mat-header-cell *matHeaderCellDef>Uploaded</th>
+                <td mat-cell *matCellDef="let item">
+                  {{ item.createdAt ? (item.createdAt | date: 'short') : '—' }}
+                </td>
+              </ng-container>
+
+              <ng-container matColumnDef="expiresAt">
+                <th mat-header-cell *matHeaderCellDef>Expires</th>
+                <td mat-cell *matCellDef="let item">
+                  {{ item.expiresAt ? (item.expiresAt | date: 'short') : '—' }}
+                </td>
+              </ng-container>
+
+              <ng-container matColumnDef="actions">
+                <th mat-header-cell *matHeaderCellDef>Actions</th>
+                <td mat-cell *matCellDef="let item">
+                  @if (item.url ?? item.fileUrl; as url) {
+                    <a mat-icon-button [href]="url" target="_blank" rel="noopener" title="View">
+                      <mat-icon>visibility</mat-icon>
+                    </a>
+                  }
+                </td>
+              </ng-container>
+
+              <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+            </table>
           }
         </mat-card-content>
       </mat-card>
@@ -70,13 +119,15 @@ import { TempUploadService, TempUploadResult } from '../../../core/services/temp
   `,
   styles: `
     .upload-container {
-      max-width: 640px;
+      max-width: 720px;
       margin: 0 auto;
       padding: 24px 16px 48px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
     }
     .upload-header {
       text-align: center;
-      margin-bottom: 24px;
 
       h1 { margin: 0 0 8px; font-size: 24px; }
       p { margin: 0; color: #666; }
@@ -114,29 +165,45 @@ import { TempUploadService, TempUploadResult } from '../../../core/services/temp
       padding: 24px 0 8px;
       color: #666;
     }
-    .result-banner {
+    .list-card mat-card-header {
       display: flex;
-      gap: 12px;
-      align-items: flex-start;
-      margin-top: 20px;
-      padding: 16px;
-      border-radius: 8px;
-      background: #e8f5e9;
-      color: #1b5e20;
-
-      mat-icon { color: #2e7d32; }
-      .hint { margin: 4px 0 0; font-size: 13px; color: #33691e; }
-      a { display: inline-block; margin-top: 8px; }
+      justify-content: space-between;
+      align-items: center;
     }
+    .empty-hint {
+      color: #666;
+      text-align: center;
+      padding: 24px 0;
+    }
+    .full-width { width: 100%; }
   `,
 })
-export class TempPdfUploadComponent {
+export class TempPdfUploadComponent implements OnInit {
   isDragging = signal(false);
   isUploading = signal(false);
-  lastResult = signal<TempUploadResult | null>(null);
-  lastFileName = signal('');
+  isLoadingList = signal(false);
+  uploads = signal<TempUploadResult[]>([]);
+  displayedColumns = ['fileName', 'createdAt', 'expiresAt', 'actions'];
 
   constructor(private tempUploadService: TempUploadService, private snackBar: MatSnackBar) {}
+
+  ngOnInit(): void {
+    this.loadUploads();
+  }
+
+  loadUploads(): void {
+    this.isLoadingList.set(true);
+    this.tempUploadService.list().subscribe({
+      next: (uploads) => {
+        this.isLoadingList.set(false);
+        this.uploads.set(uploads ?? []);
+      },
+      error: () => {
+        this.isLoadingList.set(false);
+        this.snackBar.open('Failed to load uploaded files', 'Close', { duration: 3000 });
+      },
+    });
+  }
 
   onDragOver(event: DragEvent): void {
     event.preventDefault();
@@ -172,14 +239,12 @@ export class TempPdfUploadComponent {
     }
 
     this.isUploading.set(true);
-    this.lastResult.set(null);
 
     this.tempUploadService.upload(file).subscribe({
-      next: (result) => {
+      next: () => {
         this.isUploading.set(false);
-        this.lastFileName.set(file.name);
-        this.lastResult.set(result ?? {});
         this.snackBar.open('PDF uploaded successfully', 'Close', { duration: 3000 });
+        this.loadUploads();
       },
       error: (err) => {
         this.isUploading.set(false);
