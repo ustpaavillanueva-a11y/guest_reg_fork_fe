@@ -77,6 +77,13 @@ import { of } from 'rxjs';
                   <p>Extracting data from PDF...</p>
                 </div>
               }
+
+              <div class="manual-entry-divider">
+                <span>No printed reservation?</span>
+                <button mat-button (click)="startManualEntry()" [disabled]="isLoading()">
+                  <mat-icon>edit_note</mat-icon> Enter Guest Details Manually
+                </button>
+              </div>
             </mat-card-content>
           </mat-card>
         }
@@ -85,8 +92,17 @@ import { of } from 'rxjs';
         @if (extractedData() && !isConfirmed()) {
           <mat-card class="review-card">
             <mat-card-header>
-              <mat-card-title>Review Extracted Data</mat-card-title>
-              <p class="subtitle">Check and correct extracted information below</p>
+              @if (isManualEntry()) {
+                <ng-container>
+                  <mat-card-title>Enter Guest Details</mat-card-title>
+                  <p class="subtitle">Fill in the guest and reservation information below</p>
+                </ng-container>
+              } @else {
+                <ng-container>
+                  <mat-card-title>Review Extracted Data</mat-card-title>
+                  <p class="subtitle">Check and correct extracted information below</p>
+                </ng-container>
+              }
             </mat-card-header>
 
             <mat-card-content>
@@ -324,6 +340,18 @@ import { of } from 'rxjs';
       }
     }
 
+    .manual-entry-divider {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid #eee;
+      color: #666;
+      font-size: 14px;
+    }
+
     .loading-state {
       display: flex;
       flex-direction: column;
@@ -509,6 +537,7 @@ export class PdfUploadComponent implements OnInit {
   isLoading = signal(false);
   isDragging = signal(false);
   isConfirmed = signal(false);
+  isManualEntry = signal(false);
   policies = signal<PolicyTemplate[]>([]);
 
   policyCategories = () => [
@@ -636,9 +665,33 @@ export class PdfUploadComponent implements OnInit {
     console.log('Form value after patch:', this.editForm.value);
   }
 
+  startManualEntry(): void {
+    this.isManualEntry.set(true);
+    this.initializeForm();
+    this.extractedData.set({
+      firstName: '',
+      lastName: '',
+      middleName: '',
+      phoneNumber: '',
+      email: '',
+      country: '',
+      vehiclePlateNo: '',
+      validIdPresented: false,
+      reservationNumber: '',
+      roomNumber: '',
+      roomType: '',
+      checkInDate: '',
+      checkOutDate: '',
+      checkInTime: '14:00',
+      checkOutTime: '11:00',
+      accompanyingGuests: [],
+    });
+  }
+
   resetUpload(): void {
     this.extractedData.set(null);
     this.isConfirmed.set(false);
+    this.isManualEntry.set(false);
     this.initializeForm();
   }
 

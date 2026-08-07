@@ -123,21 +123,40 @@ export class PdfExtractorService {
         console.log('Phone Number not found in text');
       }
 
-      // Extract Email - find guest email in guest info section, skip hotel email
-      // Strategy: find all emails, filter out hotel's email, take the remaining one
-      const allEmailsMatch = text.match(/([\w.-]+@[\w.-]+\.\w+)/gi);
-      if (allEmailsMatch && allEmailsMatch.length > 0) {
-        // Filter out the hotel's email
-        const guestEmail = allEmailsMatch.find(email => !email.toLowerCase().includes('kekehyuhotel'));
-        if (guestEmail) {
-          data.email = guestEmail.trim();
+      // Stop extending a labeled field's value once the next known field label
+      // is reached, instead of hardcoding specific values (e.g. a country name)
+      // as a stop-word, which breaks when that value is the literal stop-word.
+      const NEXT_LABEL =
+        '(?=\\s*(?:Check\\s*in\\s*Date|Check\\s*out\\s*Date|Room\\s*Type|Room\\s*Number|Email|Country|VEHICLE\\s*PLATE|Phone\\s*Number|Reservation\\s*Number|ACCOMPANYING|$))';
+
+      // Extract Email - pull the value directly following the "Email" label.
+      // PDF.js joins every text line with a single space regardless of the
+      // original layout, so an email that visually wraps across two lines in
+      // the PDF (e.g. "...@gm" / "ail.com") comes through with a spurious
+      // space injected mid-address - strip all whitespace before validating.
+      const emailLabelMatch = text.match(new RegExp('Email\\s+([\\s\\S]*?)' + NEXT_LABEL, 'i'));
+      const emailShape = /^[\w.-]+@[\w.-]+\.\w+$/;
+      if (emailLabelMatch) {
+        const cleaned = emailLabelMatch[1].replace(/\s+/g, '');
+        if (emailShape.test(cleaned)) {
+          data.email = cleaned;
         }
-        // If only hotel email exists, leave email blank
+      }
+      if (!data.email) {
+        // Fallback for layouts where "Email" isn't immediately followed by
+        // the value: scan the whole document, preferring a non-hotel address.
+        const allEmailsMatch = text.match(/([\w.-]+@[\w.-]+\.\w+)/gi);
+        if (allEmailsMatch && allEmailsMatch.length > 0) {
+          const guestEmail = allEmailsMatch.find(email => !email.toLowerCase().includes('kekehyuhotel'));
+          if (guestEmail) {
+            data.email = guestEmail.trim();
+          }
+        }
       }
 
       // Extract Country - default to Philippines if not found
-      const countryMatch = text.match(/Country\s+([A-Za-z\s]+?)(?=$|Check|Room|Philippines)/i);
-      data.country = countryMatch ? countryMatch[1].trim() : 'Philippines';
+      const countryMatch = text.match(new RegExp('Country\\s+([\\s\\S]*?)' + NEXT_LABEL, 'i'));
+      data.country = countryMatch ? countryMatch[1].replace(/\s+/g, ' ').trim() : 'Philippines';
 
       // Extract Vehicle Plate - be strict, only accept if it looks valid
       const vehicleMatch = text.match(/VEHICLE PLATE NO\.\s*:\s*([^\n\r]*)/i);

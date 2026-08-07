@@ -15,7 +15,7 @@ import { MatIconModule } from '@angular/material/icon';
   template: `
     <div class="signature-wrapper" [class.has-signature]="hasSigned">
       <div class="canvas-area" [class.fullscreen]="fullscreen">
-        <canvas #canvas class="signature-canvas" width="600" height="180"></canvas>
+        <canvas #canvas class="signature-canvas"></canvas>
         @if (!hasSigned) {
           <div class="placeholder">
             <mat-icon>draw</mat-icon>
@@ -124,17 +124,17 @@ export class SignaturePadComponent implements AfterViewInit, OnDestroy {
 
   private ctx!: CanvasRenderingContext2D;
   private drawing = false;
+  private activePointerId: number | null = null;
+  private lastPoint: { x: number; y: number } | null = null;
+  private lastMidPoint: { x: number; y: number } | null = null;
+  private dpr = 1;
   private boundHandlers: (() => void)[] = [];
 
   ngAfterViewInit(): void {
     const canvas = this.canvasRef.nativeElement;
     this.ctx = canvas.getContext('2d')!;
-    
+
     this.resizeCanvas();
-    
-    this.ctx.strokeStyle = '#000';
-    this.ctx.lineWidth = 1;
-    this.ctx.lineCap = 'round';
 
     const getCoordinates = (e: PointerEvent) => {
       const rect = canvas.getBoundingClientRect();
@@ -145,37 +145,63 @@ export class SignaturePadComponent implements AfterViewInit, OnDestroy {
     };
 
     const onPointerDown = (e: PointerEvent) => {
+      if (this.activePointerId !== null) return; // ignore a second simultaneous touch (e.g. resting palm)
       e.preventDefault();
+      this.activePointerId = e.pointerId;
       this.drawing = true;
+      canvas.setPointerCapture(e.pointerId); // keep receiving move/up even if the finger slides off the canvas
+
       const coords = getCoordinates(e);
+      this.lastPoint = coords;
+      this.lastMidPoint = coords;
       this.ctx.beginPath();
       this.ctx.moveTo(coords.x, coords.y);
-    };
-
-    const onPointerMove = (e: PointerEvent) => {
-      if (!this.drawing) return;
-      e.preventDefault();
-      const coords = getCoordinates(e);
-      this.ctx.lineTo(coords.x, coords.y);
+      // A tap with no movement should still leave a visible dot.
+      this.ctx.lineTo(coords.x + 0.01, coords.y + 0.01);
       this.ctx.stroke();
     };
 
-    const onPointerUp = () => {
+    const onPointerMove = (e: PointerEvent) => {
+      if (!this.drawing || e.pointerId !== this.activePointerId) return;
+      e.preventDefault();
+
+      const point = getCoordinates(e);
+      const midPoint = { x: (this.lastPoint!.x + point.x) / 2, y: (this.lastPoint!.y + point.y) / 2 };
+
+      // Quadratic-curve through midpoints (not straight segments) so strokes
+      // read as smooth handwriting instead of a jagged polyline - matters
+      // most on touch input, which samples points less densely than a mouse.
+      this.ctx.beginPath();
+      this.ctx.moveTo(this.lastMidPoint!.x, this.lastMidPoint!.y);
+      this.ctx.quadraticCurveTo(this.lastPoint!.x, this.lastPoint!.y, midPoint.x, midPoint.y);
+      this.ctx.stroke();
+
+      this.lastMidPoint = midPoint;
+      this.lastPoint = point;
+    };
+
+    const endStroke = (e: PointerEvent) => {
+      if (!this.drawing || e.pointerId !== this.activePointerId) return;
       this.drawing = false;
+      this.activePointerId = null;
+      this.lastPoint = null;
+      this.lastMidPoint = null;
       this.hasSigned = true;
       this.emitSignature();
     };
 
     canvas.addEventListener('pointerdown', onPointerDown);
     canvas.addEventListener('pointermove', onPointerMove);
-    canvas.addEventListener('pointerup', onPointerUp);
-    canvas.addEventListener('pointerleave', onPointerUp);
+    canvas.addEventListener('pointerup', endStroke);
+    canvas.addEventListener('pointercancel', endStroke);
+    canvas.addEventListener('pointerleave', endStroke);
 
     this.boundHandlers.push(
       () => canvas.removeEventListener('pointerdown', onPointerDown),
       () => canvas.removeEventListener('pointermove', onPointerMove),
-      () => canvas.removeEventListener('pointerup', onPointerUp),
-      () => canvas.removeEventListener('pointerleave', onPointerUp)
+      () => canvas.removeEventListener('pointerup', endStroke),
+      () => canvas.removeEventListener('pointercancel', endStroke),
+      () => canvas.removeEventListener('pointerleave', endStroke)
     );
   }
 
@@ -186,6 +212,10 @@ export class SignaturePadComponent implements AfterViewInit, OnDestroy {
   clear(): void {
     const canvas = this.canvasRef.nativeElement;
     this.ctx.clearRect(0, 0, canvas.width, canvas.height);
+    this.drawing = false;
+    this.activePointerId = null;
+    this.lastPoint = null;
+    this.lastMidPoint = null;
     this.hasSigned = false;
     this.signatureChange.emit('');
   }
@@ -193,64 +223,53 @@ export class SignaturePadComponent implements AfterViewInit, OnDestroy {
   private _pendingImage: HTMLImageElement | null = null;
 
   toggleFullscreen(): void {
-    // Save current drawing as image before resizing
-    const canvas = this.canvasRef.nativeElement;
-    const dataUrl = canvas.toDataURL('image/png');
-    this._pendingImage = new window.Image();
-    this._pendingImage.src = dataUrl;
     this.fullscreen = !this.fullscreen;
     setTimeout(() => this.resizeCanvas(), 0);
+  }
+
+  private applyStrokeStyle(): void {
+    this.ctx.strokeStyle = '#000';
+    this.ctx.lineWidth = 2.5;
+    this.ctx.lineCap = 'round';
+    this.ctx.lineJoin = 'round';
   }
 
   private resizeCanvas(): void {
     const canvas = this.canvasRef?.nativeElement;
     if (!canvas || !this.ctx) return;
-    
-    let width: number, height: number;
+
+    let cssWidth: number, cssHeight: number;
     if (this.fullscreen) {
-      width = Math.floor(window.innerWidth * 0.9);
-      height = Math.floor(window.innerHeight * 0.8);
+      cssWidth = Math.floor(window.innerWidth * 0.9);
+      cssHeight = Math.floor(window.innerHeight * 0.8);
     } else {
       const rect = canvas.parentElement?.getBoundingClientRect();
-      width = Math.floor(rect?.width || 600);
-      height = 180;
+      cssWidth = Math.floor(rect?.width || 600);
+      cssHeight = 220;
     }
-    
-    // Save current image before resizing
-    if (canvas.width > 0 && canvas.height > 0) {
-      const dataUrl = canvas.toDataURL('image/png');
-      this._pendingImage = new window.Image();
-      this._pendingImage.src = dataUrl;
-    }
-    
-    // Set canvas attributes (this clears the canvas)
-    canvas.width = width;
-    canvas.height = height;
-    
-    // Restore context settings after resize
-    this.ctx.strokeStyle = '#000';
-    this.ctx.lineWidth = 1;
-    this.ctx.lineCap = 'round';
-    
-    // Restore the saved image after resizing
-    if (this._pendingImage) {
-      if (this._pendingImage.complete) {
-        this.ctx.drawImage(this._pendingImage, 0, 0);
-        this._pendingImage = null;
-      } else {
-        const img = this._pendingImage;
-        img.onload = () => {
-          this.ctx.drawImage(img, 0, 0);
-          this._pendingImage = null;
-          img.onload = null;
-        };
-      }
-    }
-  }
 
-  private redraw(): void {
-    if (this.ctx) {
-      this.ctx.clearRect(0, 0, this.canvasRef.nativeElement.width, this.canvasRef.nativeElement.height);
+    // Preserve the current drawing so it can be redrawn scaled to the new size.
+    const hadContent = canvas.width > 0 && canvas.height > 0 && this.hasSigned;
+    const previousDataUrl = hadContent ? canvas.toDataURL('image/png') : null;
+
+    // Match the canvas's internal pixel resolution to the device pixel ratio
+    // (kept separate from its CSS display size) so strokes render crisp
+    // instead of blurry on high-DPI tablet screens.
+    this.dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(cssWidth * this.dpr);
+    canvas.height = Math.round(cssHeight * this.dpr);
+    canvas.style.width = `${cssWidth}px`;
+    canvas.style.height = `${cssHeight}px`;
+
+    this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    this.applyStrokeStyle();
+
+    if (previousDataUrl) {
+      const img = new window.Image();
+      img.onload = () => {
+        this.ctx.drawImage(img, 0, 0, cssWidth, cssHeight);
+      };
+      img.src = previousDataUrl;
     }
   }
 

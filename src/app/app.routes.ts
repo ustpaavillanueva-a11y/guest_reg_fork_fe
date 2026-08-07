@@ -118,6 +118,14 @@ export const routes: Routes = [
         path: 'guests',
         loadComponent: () => import('./features/admin/guest-list/guest-list.component').then((m) => m.GuestListComponent),
       },
+
+      // Booking Analytics
+      {
+        path: 'booking-analytics',
+        canActivate: [roleGuard('admin', 'super_admin')],
+        loadComponent: () =>
+          import('./features/admin/booking-analytics/booking-analytics.component').then((m) => m.BookingAnalyticsComponent),
+      },
       {
         path: 'guests/:period',
         loadComponent: () => import('./features/admin/guest-list/guest-list.component').then((m) => m.GuestListComponent),

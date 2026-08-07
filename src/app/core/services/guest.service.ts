@@ -6,6 +6,7 @@ import {
   CreateGuestRequest,
   GuestStatistics,
   StatisticsPeriod,
+  BookingAnalytics,
 } from '../models';
 
 @Injectable({ providedIn: 'root' })
@@ -48,5 +49,9 @@ export class GuestService {
 
   getMonthlyComparison(): Observable<{ months: string[]; thisYear: number[]; lastYear: number[] }> {
     return this.api.get<{ months: string[]; thisYear: number[]; lastYear: number[] }>('/guests/monthly-comparison');
+  }
+
+  getBookingAnalytics(period: StatisticsPeriod): Observable<BookingAnalytics> {
+    return this.api.get<BookingAnalytics>('/guests/booking-analytics', { period });
   }
 }

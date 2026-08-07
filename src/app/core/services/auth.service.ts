@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
 import { ApiService } from './api.service';
 import { StorageService } from './storage.service';
+import { RealtimeService } from './realtime.service';
 import { LoginRequest, LoginResponse, LogoutRequest, User, UserRole } from '../models';
 
 @Injectable({ providedIn: 'root' })
@@ -10,6 +11,7 @@ export class AuthService {
   private storage = inject(StorageService);
   private api = inject(ApiService);
   private router = inject(Router);
+  private realtime = inject(RealtimeService);
 
   private currentUser = signal<User | null>(this.storage.getUser());
 
@@ -24,6 +26,7 @@ export class AuthService {
       tap((res) => {
         this.storage.setAuth(res.accessToken, res.refreshToken, res.sessionId, res.user);
         this.currentUser.set(res.user);
+        this.realtime.connect();
       })
     );
   }
@@ -35,6 +38,7 @@ export class AuthService {
     }
     this.storage.clear();
     this.currentUser.set(null);
+    this.realtime.disconnect();
     this.router.navigate(['/login']);
   }
 

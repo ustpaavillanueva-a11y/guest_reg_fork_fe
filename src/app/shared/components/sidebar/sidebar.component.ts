@@ -242,6 +242,12 @@ export class SidebarComponent {
       ],
     },
     {
+      label: 'Booking Analytics',
+      icon: 'analytics',
+      route: '/booking-analytics',
+      roles: ['admin', 'super_admin'],
+    },
+    {
       label: 'User Management',
       icon: 'manage_accounts',
       roles: ['super_admin'],
