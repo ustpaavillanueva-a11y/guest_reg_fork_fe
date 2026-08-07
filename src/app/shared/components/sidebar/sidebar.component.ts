@@ -214,6 +214,12 @@ export class SidebarComponent {
       roles: ['front_desk'],
     },
     {
+      label: 'Upload PDF',
+      icon: 'upload_file',
+      route: '/upload-pdf',
+      roles: ['admin', 'super_admin'],
+    },
+    {
       label: 'Guests',
       icon: 'groups',
       roles: ['admin', 'super_admin'],

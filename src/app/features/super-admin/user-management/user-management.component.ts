@@ -57,12 +57,13 @@ import { User } from '../../../core/models';
                 <input matInput formControlName="email" type="email" />
               </mat-form-field>
 
-              @if (!editingUser()) {
-                <mat-form-field appearance="outline">
-                  <mat-label>Password</mat-label>
-                  <input matInput formControlName="password" type="password" />
-                </mat-form-field>
-              }
+              <mat-form-field appearance="outline">
+                <mat-label>Password</mat-label>
+                <input matInput formControlName="password" type="password" />
+                @if (editingUser()) {
+                  <mat-hint>Leave blank to keep the current password</mat-hint>
+                }
+              </mat-form-field>
 
               <mat-form-field appearance="outline">
                 <mat-label>Role</mat-label>
@@ -208,8 +209,12 @@ export class UserManagementComponent implements OnInit {
     if (this.userForm.invalid) return;
 
     const raw = this.userForm.getRawValue();
-    const data = { ...raw, role: raw.role as import('../../../core/models').UserRole };
+    const data: any = { ...raw, role: raw.role as import('../../../core/models').UserRole };
     const editing = this.editingUser();
+
+    if (editing && !data.password) {
+      delete data.password;
+    }
 
     const obs = editing
       ? this.userService.update(editing.id, data)
