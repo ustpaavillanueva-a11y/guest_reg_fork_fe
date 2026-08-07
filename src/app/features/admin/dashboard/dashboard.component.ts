@@ -17,7 +17,7 @@ import { GuestService } from '../../../core/services/guest.service';
 import { RealtimeService } from '../../../core/services/realtime.service';
 import { GuestStatistics, Guest } from '../../../core/models';
 import { GuestPdfPreviewComponent } from '../guest-list/guest-pdf-preview.component';
-import { PwaInstallService } from './pwa-install.service';
+import { PwaInstallService } from '../../../core/services/pwa-install.service';
 
 // Register Chart.js components
 Chart.register(LinearScale, CategoryScale, BarController, BarElement, Legend, Tooltip);

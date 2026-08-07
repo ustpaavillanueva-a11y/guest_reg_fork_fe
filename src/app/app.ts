@@ -1,10 +1,11 @@
 import { Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { RealtimeService } from './core/services/realtime.service';
+import { PwaInstallBannerComponent } from './shared/components/pwa-install-banner/pwa-install-banner.component';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet],
+  imports: [RouterOutlet, PwaInstallBannerComponent],
   templateUrl: './app.html',
   styleUrl: './app.scss'
 })

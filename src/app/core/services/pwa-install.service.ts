@@ -1,14 +1,18 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, PLATFORM_ID, inject, signal } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 
 @Injectable({
   providedIn: 'root'
 })
 export class PwaInstallService {
   canInstall = signal(false);
+  private isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private deferredPrompt: any;
 
   constructor() {
-    this.setupPwaPrompt();
+    if (this.isBrowser) {
+      this.setupPwaPrompt();
+    }
   }
 
   private setupPwaPrompt(): void {
@@ -32,7 +36,7 @@ export class PwaInstallService {
 
     this.deferredPrompt.prompt();
     const { outcome } = await this.deferredPrompt.userChoice;
-    
+
     if (outcome === 'accepted') {
       this.deferredPrompt = null;
       this.canInstall.set(false);
