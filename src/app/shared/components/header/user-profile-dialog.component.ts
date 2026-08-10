@@ -6,7 +6,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { AuthService } from '../../../core/services/auth.service';
-import { SignaturePadComponent } from '../signature-pad/signature-pad.component';
 
 interface User {
   id?: string;
@@ -16,6 +15,8 @@ interface User {
   role?: string;
   signature?: string | null;
 }
+
+const MAX_SIGNATURE_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 
 @Component({
   selector: 'app-user-profile-dialog',
@@ -27,7 +28,6 @@ interface User {
     MatIconModule,
     MatDividerModule,
     MatSnackBarModule,
-    SignaturePadComponent,
   ],
   template: `
     <div class="profile-dialog">
@@ -66,32 +66,31 @@ interface User {
 
         <div class="profile-field">
           <label>My Signature</label>
-          <p class="sig-hint">Used automatically as your Front Desk signature when you register a guest.</p>
+          <p class="sig-hint">Used automatically as your Front Desk signature when you register a guest. PNG image only.</p>
 
-          @if (savedSignature() && !editingSignature()) {
+          @if (pendingPreview(); as preview) {
             <div class="signature-preview">
-              <img [src]="savedSignature()" alt="Your saved signature" />
+              <img [src]="preview" alt="Signature to save" />
             </div>
-            <button mat-stroked-button (click)="editingSignature.set(true)">
-              <mat-icon>edit</mat-icon> Change Signature
-            </button>
-          } @else {
-            <app-signature-pad (signatureChange)="onSignatureDrawn($event)" />
             <div class="sig-form-actions">
-              @if (savedSignature()) {
-                <button mat-button (click)="editingSignature.set(false)" [disabled]="saving()">
-                  Cancel
-                </button>
-              }
-              <button
-                mat-raised-button
-                color="primary"
-                (click)="saveSignature()"
-                [disabled]="!drawnSignature() || saving()"
-              >
+              <button mat-button (click)="cancelPending()" [disabled]="saving()">Cancel</button>
+              <button mat-raised-button color="primary" (click)="saveSignature()" [disabled]="saving()">
                 {{ saving() ? 'Saving...' : 'Save Signature' }}
               </button>
             </div>
+          } @else if (savedSignature()) {
+            <div class="signature-preview">
+              <img [src]="savedSignature()" alt="Your saved signature" />
+            </div>
+            <input #fileInput type="file" accept="image/png" hidden (change)="onFileSelected($event)" />
+            <button mat-stroked-button (click)="fileInput.click()">
+              <mat-icon>upload</mat-icon> Change Signature
+            </button>
+          } @else {
+            <input #fileInput type="file" accept="image/png" hidden (change)="onFileSelected($event)" />
+            <button mat-stroked-button (click)="fileInput.click()">
+              <mat-icon>upload</mat-icon> Upload Signature (PNG)
+            </button>
           }
         </div>
       </div>
@@ -197,8 +196,7 @@ interface User {
 })
 export class UserProfileDialogComponent {
   savedSignature = signal<string | null>(null);
-  editingSignature = signal(false);
-  drawnSignature = signal<string>('');
+  pendingPreview = signal<string | null>(null);
   saving = signal(false);
 
   constructor(
@@ -209,21 +207,42 @@ export class UserProfileDialogComponent {
     this.savedSignature.set(data.signature ?? null);
   }
 
-  onSignatureDrawn(dataUrl: string): void {
-    this.drawnSignature.set(dataUrl);
+  onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+
+    if (file.type !== 'image/png') {
+      this.snackBar.open('Please upload a PNG image', 'Close', { duration: 3000 });
+      return;
+    }
+
+    if (file.size > MAX_SIGNATURE_FILE_SIZE) {
+      this.snackBar.open('Image is too large (max 2MB)', 'Close', { duration: 3000 });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => this.pendingPreview.set(reader.result as string);
+    reader.readAsDataURL(file);
+  }
+
+  cancelPending(): void {
+    this.pendingPreview.set(null);
   }
 
   saveSignature(): void {
-    if (!this.drawnSignature()) return;
+    const dataUrl = this.pendingPreview();
+    if (!dataUrl) return;
 
     this.saving.set(true);
-    this.authService.updateSignature(this.drawnSignature()).subscribe({
+    this.authService.updateSignature(dataUrl).subscribe({
       next: (user) => {
         this.saving.set(false);
         this.savedSignature.set(user.signature ?? null);
         this.data.signature = user.signature;
-        this.editingSignature.set(false);
-        this.drawnSignature.set('');
+        this.pendingPreview.set(null);
         this.snackBar.open('Signature saved', 'Close', { duration: 3000 });
       },
       error: (err) => {
