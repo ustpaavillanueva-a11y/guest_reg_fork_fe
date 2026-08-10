@@ -4,11 +4,13 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { AuthService } from '../../core/services/auth.service';
+import { UserProfileDialogComponent } from '../../shared/components/header/user-profile-dialog.component';
 
 @Component({
   selector: 'app-front-desk-layout',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, MatToolbarModule, MatButtonModule, MatIconModule, MatTooltipModule],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, MatToolbarModule, MatButtonModule, MatIconModule, MatTooltipModule, MatDialogModule],
   template: `
     <mat-toolbar class="toolbar">
       <div class="toolbar-left">
@@ -29,6 +31,9 @@ import { AuthService } from '../../core/services/auth.service';
           <mat-icon>account_circle</mat-icon>
           <span class="user-name">{{ userName() }}</span>
         </div>
+        <button mat-icon-button (click)="openProfileModal()" matTooltip="Profile">
+          <mat-icon>person</mat-icon>
+        </button>
         <button mat-icon-button (click)="authService.logout()" matTooltip="Sign out">
           <mat-icon>logout</mat-icon>
         </button>
@@ -124,9 +129,17 @@ import { AuthService } from '../../core/services/auth.service';
 })
 export class FrontDeskLayoutComponent {
   authService = inject(AuthService);
+  private dialog = inject(MatDialog);
 
   userName = () => {
     const user = this.authService.user();
     return user ? `${user.firstName} ${user.lastName}` : '';
   };
+
+  openProfileModal(): void {
+    this.dialog.open(UserProfileDialogComponent, {
+      width: '400px',
+      data: this.authService.user(),
+    });
+  }
 }
