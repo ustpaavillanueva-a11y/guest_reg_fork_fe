@@ -1,4 +1,4 @@
-import { Component, signal, OnInit, inject, ViewChild } from '@angular/core';
+import { Component, signal, computed, OnInit, inject, ViewChild } from '@angular/core';
 import { ReactiveFormsModule, FormBuilder, FormArray, Validators } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { DatePipe } from '@angular/common';
@@ -222,7 +222,16 @@ import { RoomType, HotelSettings, PolicyTemplate } from '../../../core/models';
 
                 <div class="signature-block">
                   <label class="sig-label">Front Desk Signature</label>
-                  <app-signature-pad (signatureChange)="onFrontDeskSignature($event)" />
+                  @if (frontDeskSignature()) {
+                    <div class="signature-preview">
+                      <img [src]="frontDeskSignature()" alt="Your saved signature" />
+                    </div>
+                  } @else {
+                    <p class="sig-missing-warning">
+                      <mat-icon>warning</mat-icon>
+                      You haven't set up your signature yet. Add it from your Profile before registering a guest.
+                    </p>
+                  }
                 </div>
               </mat-card-content>
             </mat-card>
@@ -571,6 +580,38 @@ import { RoomType, HotelSettings, PolicyTemplate } from '../../../core/models';
       color: #444;
       margin-bottom: 10px;
     }
+    .signature-preview {
+      border: 1px solid #eee;
+      border-radius: 8px;
+      background: #fff;
+      padding: 8px;
+      display: inline-block;
+
+      img {
+        display: block;
+        max-width: 280px;
+        max-height: 120px;
+      }
+    }
+    .sig-missing-warning {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: #fff3e0;
+      color: #7a4a00;
+      font-size: 13px;
+
+      mat-icon {
+        color: #f57c00;
+        font-size: 20px;
+        width: 20px;
+        height: 20px;
+        flex-shrink: 0;
+      }
+    }
 
     /* ============ Details Display ============ */
     .details-row {
@@ -709,7 +750,6 @@ export class GuestRegistrationComponent implements OnInit {
 
   private fb = inject(FormBuilder);
   private guestSignatureData = '';
-  private frontDeskSignatureData = '';
 
   guestInfoForm = this.fb.nonNullable.group({
     firstName: ['', Validators.required],
@@ -953,16 +993,14 @@ export class GuestRegistrationComponent implements OnInit {
     this.guestSignatureData = data;
   }
 
-  onFrontDeskSignature(data: string): void {
-    this.frontDeskSignatureData = data;
-  }
+  frontDeskSignature = computed(() => this.authService.user()?.signature ?? '');
 
   isFormValid(): boolean {
     return (
       this.guestInfoForm.valid &&
       this.signatureForm.valid &&
       !!this.guestSignatureData &&
-      !!this.frontDeskSignatureData
+      !!this.frontDeskSignature()
     );
   }
 
@@ -1071,8 +1109,8 @@ export class GuestRegistrationComponent implements OnInit {
         guestPrintedName: signature.guestPrintedName,
         guestSignature: this.guestSignatureData,
         signatureDate: this.formatDate(new Date()),
-        processedByName: signature.processedByName,
-        processedBySignature: this.frontDeskSignatureData,
+        // processedByName/processedBySignature are filled in by the backend
+        // from the logged-in front desk user's own profile.
         remarks: signature.remarks || undefined,
         roomTypesBackup: roomTypesBackup || undefined, // Backup for PDF display fallback
       },
@@ -1120,7 +1158,6 @@ export class GuestRegistrationComponent implements OnInit {
     this.policiesForm.reset();
     this.signatureForm.reset();
     this.guestSignatureData = '';
-    this.frontDeskSignatureData = '';
 
     const user = this.authService.user();
     if (user) {

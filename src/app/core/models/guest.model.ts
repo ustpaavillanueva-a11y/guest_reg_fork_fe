@@ -113,8 +113,9 @@ export interface CreateAgreementRequest {
   guestPrintedName: string;
   guestSignature: string;
   signatureDate: string;
-  processedByName: string;
-  processedBySignature: string;
+  // Filled in by the backend from the registering user's own profile.
+  processedByName?: string;
+  processedBySignature?: string;
   remarks?: string;
   pdfPath?: string;
   roomTypesBackup?: string;  // Backup room types for PDF display fallback

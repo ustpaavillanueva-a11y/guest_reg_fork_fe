@@ -7,6 +7,7 @@ export interface User {
   lastName: string;
   role: UserRole;
   isActive: boolean;
+  signature?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

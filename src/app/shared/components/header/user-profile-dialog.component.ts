@@ -1,9 +1,12 @@
-import { Component, Inject } from '@angular/core';
+import { Component, Inject, signal } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { AuthService } from '../../../core/services/auth.service';
+import { SignaturePadComponent } from '../signature-pad/signature-pad.component';
 
 interface User {
   id?: string;
@@ -11,12 +14,21 @@ interface User {
   lastName: string;
   email: string;
   role?: string;
+  signature?: string | null;
 }
 
 @Component({
   selector: 'app-user-profile-dialog',
   standalone: true,
-  imports: [CommonModule, MatDialogModule, MatButtonModule, MatIconModule, MatDividerModule],
+  imports: [
+    CommonModule,
+    MatDialogModule,
+    MatButtonModule,
+    MatIconModule,
+    MatDividerModule,
+    MatSnackBarModule,
+    SignaturePadComponent,
+  ],
   template: `
     <div class="profile-dialog">
       <div class="dialog-header">
@@ -51,12 +63,42 @@ interface User {
           <label>User ID</label>
           <p>{{ data.id }}</p>
         </div>
+
+        <div class="profile-field">
+          <label>My Signature</label>
+          <p class="sig-hint">Used automatically as your Front Desk signature when you register a guest.</p>
+
+          @if (savedSignature() && !editingSignature()) {
+            <div class="signature-preview">
+              <img [src]="savedSignature()" alt="Your saved signature" />
+            </div>
+            <button mat-stroked-button (click)="editingSignature.set(true)">
+              <mat-icon>edit</mat-icon> Change Signature
+            </button>
+          } @else {
+            <app-signature-pad (signatureChange)="onSignatureDrawn($event)" />
+            <div class="sig-form-actions">
+              @if (savedSignature()) {
+                <button mat-button (click)="editingSignature.set(false)" [disabled]="saving()">
+                  Cancel
+                </button>
+              }
+              <button
+                mat-raised-button
+                color="primary"
+                (click)="saveSignature()"
+                [disabled]="!drawnSignature() || saving()"
+              >
+                {{ saving() ? 'Saving...' : 'Save Signature' }}
+              </button>
+            </div>
+          }
+        </div>
       </div>
 
       <mat-divider class="my-divider"></mat-divider>
 
       <div class="dialog-actions">
-        <button mat-raised-button color="primary">Edit Profile</button>
         <button mat-button (click)="onClose()">Close</button>
       </div>
     </div>
@@ -93,7 +135,7 @@ interface User {
 
     .profile-content {
       padding: 20px;
-      max-height: 400px;
+      max-height: 500px;
       overflow-y: auto;
     }
 
@@ -117,6 +159,34 @@ interface User {
       }
     }
 
+    .sig-hint {
+      font-size: 12px;
+      color: #888;
+      margin-bottom: 10px !important;
+      text-transform: none;
+    }
+
+    .signature-preview {
+      border: 1px solid #eee;
+      border-radius: 8px;
+      background: #fff;
+      padding: 8px;
+      margin-bottom: 10px;
+
+      img {
+        display: block;
+        max-width: 100%;
+        max-height: 120px;
+      }
+    }
+
+    .sig-form-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
     .dialog-actions {
       display: flex;
       gap: 10px;
@@ -126,7 +196,42 @@ interface User {
   `
 })
 export class UserProfileDialogComponent {
-  constructor(@Inject(MAT_DIALOG_DATA) public data: User) {}
+  savedSignature = signal<string | null>(null);
+  editingSignature = signal(false);
+  drawnSignature = signal<string>('');
+  saving = signal(false);
+
+  constructor(
+    @Inject(MAT_DIALOG_DATA) public data: User,
+    private authService: AuthService,
+    private snackBar: MatSnackBar,
+  ) {
+    this.savedSignature.set(data.signature ?? null);
+  }
+
+  onSignatureDrawn(dataUrl: string): void {
+    this.drawnSignature.set(dataUrl);
+  }
+
+  saveSignature(): void {
+    if (!this.drawnSignature()) return;
+
+    this.saving.set(true);
+    this.authService.updateSignature(this.drawnSignature()).subscribe({
+      next: (user) => {
+        this.saving.set(false);
+        this.savedSignature.set(user.signature ?? null);
+        this.data.signature = user.signature;
+        this.editingSignature.set(false);
+        this.drawnSignature.set('');
+        this.snackBar.open('Signature saved', 'Close', { duration: 3000 });
+      },
+      error: (err) => {
+        this.saving.set(false);
+        this.snackBar.open(err.error?.message ?? 'Failed to save signature', 'Close', { duration: 3000 });
+      },
+    });
+  }
 
   onClose(): void {
     // MatDialog closes automatically when backdrop is clicked

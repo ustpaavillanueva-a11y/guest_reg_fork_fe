@@ -51,7 +51,19 @@ export class AuthService {
 
   getProfile(): Observable<User> {
     return this.api.get<User>('/auth/profile').pipe(
-      tap((user) => this.currentUser.set(user))
+      tap((user) => {
+        this.currentUser.set(user);
+        this.storage.setUser(user);
+      })
+    );
+  }
+
+  updateSignature(signature: string): Observable<User> {
+    return this.api.patch<User>('/auth/profile', { signature }).pipe(
+      tap((user) => {
+        this.currentUser.set(user);
+        this.storage.setUser(user);
+      })
     );
   }
 

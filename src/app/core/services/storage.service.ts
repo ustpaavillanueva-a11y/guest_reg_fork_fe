@@ -44,6 +44,11 @@ export class StorageService {
     localStorage.setItem(KEYS.ACCESS_TOKEN, token);
   }
 
+  setUser(user: User): void {
+    if (!this.isBrowser) return;
+    localStorage.setItem(KEYS.USER, JSON.stringify(user));
+  }
+
   clear(): void {
     if (!this.isBrowser) return;
     localStorage.clear();
