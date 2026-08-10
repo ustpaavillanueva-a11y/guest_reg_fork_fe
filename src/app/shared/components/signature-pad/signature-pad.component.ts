@@ -254,8 +254,11 @@ export class SignaturePadComponent implements AfterViewInit, OnDestroy {
 
     // Match the canvas's internal pixel resolution to the device pixel ratio
     // (kept separate from its CSS display size) so strokes render crisp
-    // instead of blurry on high-DPI tablet screens.
-    this.dpr = window.devicePixelRatio || 1;
+    // instead of blurry on high-DPI tablet screens. Capped at 2x - beyond
+    // that the exported signature balloons in size (e.g. 3x on a large
+    // fullscreen tablet canvas) without any visible sharpness benefit,
+    // and used to blow past the backend's request body size limit.
+    this.dpr = Math.min(window.devicePixelRatio || 1, 2);
     canvas.width = Math.round(cssWidth * this.dpr);
     canvas.height = Math.round(cssHeight * this.dpr);
     canvas.style.width = `${cssWidth}px`;
@@ -275,6 +278,10 @@ export class SignaturePadComponent implements AfterViewInit, OnDestroy {
 
   private emitSignature(): void {
     const canvas = this.canvasRef.nativeElement;
-    this.signatureChange.emit(canvas.toDataURL('image/png'));
+    // JPEG instead of PNG: the canvas background is opaque white, so there's
+    // no transparency to lose, and JPEG compresses a mostly-blank signature
+    // far smaller - keeps large fullscreen/high-DPI signatures well under
+    // the backend's request body size limit.
+    this.signatureChange.emit(canvas.toDataURL('image/jpeg', 0.92));
   }
 }
