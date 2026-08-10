@@ -211,7 +211,11 @@ export class SignaturePadComponent implements AfterViewInit, OnDestroy {
 
   clear(): void {
     const canvas = this.canvasRef.nativeElement;
-    this.ctx.clearRect(0, 0, canvas.width, canvas.height);
+    this.ctx.save();
+    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+    this.ctx.fillStyle = '#fff';
+    this.ctx.fillRect(0, 0, canvas.width, canvas.height);
+    this.ctx.restore();
     this.drawing = false;
     this.activePointerId = null;
     this.lastPoint = null;
@@ -265,6 +269,14 @@ export class SignaturePadComponent implements AfterViewInit, OnDestroy {
     canvas.style.height = `${cssHeight}px`;
 
     this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+
+    // Paint an actual opaque white background into the canvas's pixel data -
+    // the CSS `background: white` only paints behind transparent pixels on
+    // screen, but toDataURL('image/jpeg') has no alpha channel and flattens
+    // untouched (transparent) pixels to black instead of white.
+    this.ctx.fillStyle = '#fff';
+    this.ctx.fillRect(0, 0, cssWidth, cssHeight);
+
     this.applyStrokeStyle();
 
     if (previousDataUrl) {
