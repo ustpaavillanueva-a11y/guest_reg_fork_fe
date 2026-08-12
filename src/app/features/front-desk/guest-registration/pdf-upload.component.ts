@@ -186,26 +186,13 @@ import { of } from 'rxjs';
                   <h3>Personal Information</h3>
                 </div>
 
-                <div class="form-row three-col">
-                  <mat-form-field appearance="outline">
-                    <mat-label>First Name *</mat-label>
-                    <input matInput formControlName="firstName" />
-                    @if (editForm.get('firstName')?.hasError('required') && editForm.get('firstName')?.touched) {
+                <div class="form-row">
+                  <mat-form-field appearance="outline" class="full-width-field">
+                    <mat-label>Full Name *</mat-label>
+                    <input matInput formControlName="fullName" />
+                    @if (editForm.get('fullName')?.hasError('required') && editForm.get('fullName')?.touched) {
                       <mat-error>Required</mat-error>
                     }
-                  </mat-form-field>
-
-                  <mat-form-field appearance="outline">
-                    <mat-label>Last Name *</mat-label>
-                    <input matInput formControlName="lastName" />
-                    @if (editForm.get('lastName')?.hasError('required') && editForm.get('lastName')?.touched) {
-                      <mat-error>Required</mat-error>
-                    }
-                  </mat-form-field>
-
-                  <mat-form-field appearance="outline">
-                    <mat-label>Middle Name</mat-label>
-                    <input matInput formControlName="middleName" />
                   </mat-form-field>
                 </div>
 
@@ -519,6 +506,7 @@ import { of } from 'rxjs';
 
       .form-row {
         display: grid;
+        grid-template-columns: 1fr;
         gap: 16px;
         margin-bottom: 16px;
 
@@ -533,6 +521,10 @@ import { of } from 'rxjs';
         @media (max-width: 768px) {
           grid-template-columns: 1fr !important;
         }
+      }
+
+      .full-width-field {
+        width: 100%;
       }
 
       .checkbox-field {
@@ -684,9 +676,7 @@ export class PdfUploadComponent implements OnInit {
 
   private initializeForm(): void {
     this.editForm = this.formBuilder.group({
-      firstName: ['', Validators.required],
-      lastName: ['', Validators.required],
-      middleName: [''],
+      fullName: ['', Validators.required],
       phoneNumber: [''],
       email: [''],
       country: [''],
@@ -755,9 +745,7 @@ export class PdfUploadComponent implements OnInit {
   private populateForm(data: ExtractedGuestData): void {
     // Use room type name directly (supports multiple room types, comma-separated)
     this.editForm.patchValue({
-      firstName: data.firstName,
-      lastName: data.lastName,
-      middleName: data.middleName,
+      fullName: [data.firstName, data.middleName, data.lastName].filter(n => n).join(' ').trim(),
       phoneNumber: data.phoneNumber,
       email: data.email,
       country: data.country,
@@ -810,7 +798,8 @@ export class PdfUploadComponent implements OnInit {
       return;
     }
 
-    const formData = this.editForm.value;
+    const { fullName, ...rest } = this.editForm.value;
+    const formData = { ...rest, ...this.splitFullName(fullName) };
 
     // Store the extracted data in router history state and navigate to main guest registration
     this.router.navigate(
@@ -822,5 +811,16 @@ export class PdfUploadComponent implements OnInit {
         },
       }
     );
+  }
+
+  // "First Middle Last" - the guest's own registered name always uses one
+  // typed field now (see initializeForm), but downstream (guest-registration
+  // component, the CreateGuestDto) still stores first/middle/last separately.
+  private splitFullName(fullName: string): { firstName: string; lastName: string; middleName: string } {
+    const parts = (fullName || '').trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return { firstName: '', lastName: '', middleName: '' };
+    if (parts.length === 1) return { firstName: parts[0], lastName: '', middleName: '' };
+    if (parts.length === 2) return { firstName: parts[0], lastName: parts[1], middleName: '' };
+    return { firstName: parts[0], lastName: parts[parts.length - 1], middleName: parts.slice(1, -1).join(' ') };
   }
 }

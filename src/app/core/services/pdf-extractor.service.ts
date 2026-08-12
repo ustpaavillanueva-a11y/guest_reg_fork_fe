@@ -86,8 +86,10 @@ export class PdfExtractorService {
     };
 
     try {
-      // Extract Name - allow letters, spaces, hyphens, and other common characters in names
-      const nameMatch = text.match(/Name\s+([A-Za-z\s\-\.\']+?)(?=\s*(?:Check in|Reservation|$))/i);
+      // Extract Name - allow letters, spaces, and common characters found in real
+      // guest/company names (hyphens, periods, apostrophes, slashes as in
+      // "Company/ Title Name", commas, ampersands, parentheses)
+      const nameMatch = text.match(/Name\s+([A-Za-z\s\-\.\'\/,&()]+?)(?=\s*(?:Check in|Reservation|$))/i);
       if (nameMatch) {
         const fullName = nameMatch[1].trim();
         // Split by space or hyphen followed by space
