@@ -1,4 +1,4 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
@@ -24,7 +24,7 @@ import { TempUploadService, TempUploadResult } from '../../../core/services/temp
     <div class="upload-container">
       <div class="upload-header">
         <h1>📄 Upload Guest Registration PDF</h1>
-        <p>Uploaded files are stored temporarily and auto-delete after 1 hour</p>
+        <p>Uploaded files are stored temporarily and auto-delete after 23 hours</p>
       </div>
 
       <mat-card class="upload-card">
@@ -92,9 +92,15 @@ import { TempUploadService, TempUploadResult } from '../../../core/services/temp
               </ng-container>
 
               <ng-container matColumnDef="expiresAt">
-                <th mat-header-cell *matHeaderCellDef>Expires</th>
+                <th mat-header-cell *matHeaderCellDef>Time Left</th>
                 <td mat-cell *matCellDef="let item">
-                  {{ item.expiresAt ? (item.expiresAt | date: 'short') : '—' }}
+                  @if (item.expiresAt) {
+                    <span [class.expired-label]="timeLeft(item.expiresAt) === 'Expired'">
+                      {{ timeLeft(item.expiresAt) }}
+                    </span>
+                  } @else {
+                    —
+                  }
                 </td>
               </ng-container>
 
@@ -176,19 +182,50 @@ import { TempUploadService, TempUploadResult } from '../../../core/services/temp
       padding: 24px 0;
     }
     .full-width { width: 100%; }
+    .expired-label {
+      color: #c62828;
+      font-weight: 600;
+    }
   `,
 })
-export class TempPdfUploadComponent implements OnInit {
+export class TempPdfUploadComponent implements OnInit, OnDestroy {
   isDragging = signal(false);
   isUploading = signal(false);
   isLoadingList = signal(false);
   uploads = signal<TempUploadResult[]>([]);
   displayedColumns = ['fileName', 'createdAt', 'expiresAt', 'actions'];
 
+  private now = signal(Date.now());
+  private clockIntervalId?: ReturnType<typeof setInterval>;
+
   constructor(private tempUploadService: TempUploadService, private snackBar: MatSnackBar) {}
 
   ngOnInit(): void {
     this.loadUploads();
+    // Ticks the "Time Left" countdown; also catches newly-expired rows so
+    // they flip to "Expired" without the user needing to hit refresh.
+    this.clockIntervalId = setInterval(() => this.now.set(Date.now()), 1000);
+  }
+
+  ngOnDestroy(): void {
+    if (this.clockIntervalId) clearInterval(this.clockIntervalId);
+  }
+
+  timeLeft(expiresAt: string): string {
+    const remainingMs = new Date(expiresAt).getTime() - this.now();
+    if (remainingMs <= 0) return 'Expired';
+
+    const totalSeconds = Math.floor(remainingMs / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    // Under an hour left: precise MM:SS countdown, since urgency is higher.
+    // Otherwise a coarser "Hh MMm" reads better than a five-digit clock.
+    if (hours === 0) {
+      return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    }
+    return `${hours}h ${minutes.toString().padStart(2, '0')}m`;
   }
 
   loadUploads(): void {

@@ -106,7 +106,7 @@ export const routes: Routes = [
           import('./features/front-desk/registration-pdf/registration-pdf.component').then((m) => m.RegistrationPdfComponent),
       },
 
-      // Upload Registration PDF (temporary storage, auto-deletes after 1 hour)
+      // Upload Registration PDF (temporary storage, auto-deletes after 23 hours)
       {
         path: 'upload-pdf',
         loadComponent: () =>
