@@ -6,6 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTableModule } from '@angular/material/table';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { firstValueFrom } from 'rxjs';
 import { TempUploadService, TempUploadResult } from '../../../core/services/temp-upload.service';
 
 @Component({
@@ -40,24 +41,24 @@ import { TempUploadService, TempUploadResult } from '../../../core/services/temp
               <mat-icon>cloud_upload</mat-icon>
             </div>
             <h3>Drag & Drop PDF Here</h3>
-            <p>or click to browse</p>
+            <p>or click to browse (multiple files allowed)</p>
 
-            <input #fileInput type="file" accept=".pdf" (change)="onFileSelected($event)" hidden />
+            <input #fileInput type="file" accept=".pdf" multiple (change)="onFileSelected($event)" hidden />
             <button mat-raised-button color="primary" (click)="fileInput.click()" [disabled]="isUploading()">
               @if (isUploading()) {
                 <mat-spinner diameter="24" />
               } @else {
                 <ng-container>
-                  <mat-icon>attach_file</mat-icon> Choose PDF
+                  <mat-icon>attach_file</mat-icon> Choose PDFs
                 </ng-container>
               }
             </button>
           </div>
 
-          @if (isUploading()) {
+          @if (uploadProgress(); as progress) {
             <div class="loading-state">
               <mat-spinner diameter="40" />
-              <p>Uploading…</p>
+              <p>Uploading {{ progress.current }} of {{ progress.total }}…</p>
             </div>
           }
         </mat-card-content>
@@ -192,6 +193,7 @@ export class TempPdfUploadComponent implements OnInit, OnDestroy {
   isDragging = signal(false);
   isUploading = signal(false);
   isLoadingList = signal(false);
+  uploadProgress = signal<{ current: number; total: number } | null>(null);
   uploads = signal<TempUploadResult[]>([]);
   displayedColumns = ['fileName', 'createdAt', 'expiresAt', 'actions'];
 
@@ -257,36 +259,59 @@ export class TempPdfUploadComponent implements OnInit, OnDestroy {
     this.isDragging.set(false);
     const files = event.dataTransfer?.files;
     if (files && files.length > 0) {
-      this.uploadFile(files[0]);
+      this.uploadFiles(Array.from(files));
     }
   }
 
   onFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
-      this.uploadFile(input.files[0]);
+      this.uploadFiles(Array.from(input.files));
     }
     input.value = '';
   }
 
-  private uploadFile(file: File): void {
-    if (!file.type.includes('pdf')) {
-      this.snackBar.open('Please upload a PDF file', 'Close', { duration: 3000 });
-      return;
+  private async uploadFiles(files: File[]): Promise<void> {
+    const pdfFiles = files.filter((f) => f.type.includes('pdf'));
+    const skipped = files.length - pdfFiles.length;
+    if (skipped > 0) {
+      this.snackBar.open(
+        skipped === files.length ? 'Please upload PDF files' : `Skipped ${skipped} non-PDF file(s)`,
+        'Close',
+        { duration: 3000 },
+      );
     }
+    if (pdfFiles.length === 0) return;
 
     this.isUploading.set(true);
+    let succeeded = 0;
+    let failed = 0;
 
-    this.tempUploadService.upload(file).subscribe({
-      next: () => {
-        this.isUploading.set(false);
-        this.snackBar.open('PDF uploaded successfully', 'Close', { duration: 3000 });
-        this.loadUploads();
-      },
-      error: (err) => {
-        this.isUploading.set(false);
-        this.snackBar.open(err.error?.message ?? 'Upload failed', 'Close', { duration: 3000 });
-      },
-    });
+    // Uploaded one at a time rather than in parallel, so a burst of files
+    // doesn't hammer the free-tier backend instance all at once.
+    for (let i = 0; i < pdfFiles.length; i++) {
+      this.uploadProgress.set({ current: i + 1, total: pdfFiles.length });
+      try {
+        await firstValueFrom(this.tempUploadService.upload(pdfFiles[i]));
+        succeeded++;
+      } catch {
+        failed++;
+      }
+    }
+
+    this.isUploading.set(false);
+    this.uploadProgress.set(null);
+
+    if (failed === 0) {
+      this.snackBar.open(
+        succeeded === 1 ? 'PDF uploaded successfully' : `${succeeded} PDFs uploaded successfully`,
+        'Close',
+        { duration: 3000 },
+      );
+    } else {
+      this.snackBar.open(`${succeeded} uploaded, ${failed} failed`, 'Close', { duration: 4000 });
+    }
+
+    this.loadUploads();
   }
 }

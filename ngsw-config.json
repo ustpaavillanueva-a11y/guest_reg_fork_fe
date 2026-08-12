@@ -36,9 +36,10 @@
         "**/guests/**"
       ],
       "cacheConfig": {
-        "strategy": "performance",
+        "strategy": "freshness",
         "maxSize": 100,
-        "maxAge": "1d"
+        "maxAge": "1h",
+        "timeout": "5s"
       }
     },
     {
