@@ -25,7 +25,7 @@ import { TempUploadService, TempUploadResult } from '../../../core/services/temp
     <div class="upload-container">
       <div class="upload-header">
         <h1>📄 Upload Guest Registration PDF</h1>
-        <p>Uploaded files are stored temporarily and auto-delete after 23 hours</p>
+        <p>Uploaded files are stored temporarily and auto-delete after 10 hours</p>
       </div>
 
       <mat-card class="upload-card">
