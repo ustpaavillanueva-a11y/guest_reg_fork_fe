@@ -67,6 +67,11 @@ import { GuestPdfPreviewComponent } from './guest-pdf-preview.component';
             <td mat-cell *matCellDef="let guest">{{ guest.country || '-' }}</td>
           </ng-container>
 
+          <ng-container matColumnDef="plateNumber">
+            <th mat-header-cell *matHeaderCellDef>Plate Number</th>
+            <td mat-cell *matCellDef="let guest">{{ guest.vehiclePlateNo || '-' }}</td>
+          </ng-container>
+
           <ng-container matColumnDef="registeredBy">
             <th mat-header-cell *matHeaderCellDef>Registered By</th>
             <td mat-cell *matCellDef="let guest">
@@ -122,7 +127,7 @@ export class GuestListComponent implements OnInit {
   filteredGuests = signal<Guest[]>([]);
   searchTerm = '';
   loadingGuestId = signal<string | null>(null);
-  displayedColumns = ['name', 'phone', 'country', 'registeredBy', 'date', 'actions'];
+  displayedColumns = ['name', 'phone', 'country', 'plateNumber', 'registeredBy', 'date', 'actions'];
 
   private realtime = inject(RealtimeService);
   private destroyRef = inject(DestroyRef);
